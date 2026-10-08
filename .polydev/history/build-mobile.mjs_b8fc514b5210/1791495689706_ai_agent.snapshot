@@ -1,0 +1,18 @@
+// بناء تطبيق الجوال (Capacitor):
+// 1) vite build --config vite.mobile.config.ts → dist-mobile (SPA خالص بدون SSR — يعمل في WebView)
+// 2) npx cap sync android → ينسخ الأصول إلى مشروع أندرويد
+import { execSync } from "node:child_process";
+import { existsSync } from "node:fs";
+
+const ROOT = new URL("..", import.meta.url).pathname;
+process.chdir(ROOT);
+
+console.log("📦 1/2 بناء تطبيق الجوال (SPA)...");
+execSync("npx vite build --config vite.mobile.config.ts", { stdio: "inherit" });
+
+if (!existsSync("dist-mobile/index.html")) throw new Error("فشل البناء — لا يوجد dist-mobile/index.html");
+
+console.log("📱 2/2 مزامنة Capacitor...");
+execSync("npx cap sync android", { stdio: "inherit" });
+
+console.log("✅ تم — dist-mobile جاهزة و android/ محدّثة");

@@ -1,45 +1,24 @@
 // بناء تطبيق الجوال (Capacitor):
-// 1) npm run build → ينتج dist/client (أصول العميل) و dist/server
-// 2) يولّد index.html ثابت يربط ملفات client/styles الفعلية (أسماؤها تتغير مع كل بناء)
+// 1) vite build --config vite.mobile.config.ts → dist-mobile (SPA خالص بدون SSR — يعمل في WebView)
+// 2) نقل HTML الناتج إلى جذر dist-mobile/index.html (Vite يحافظ على مسار src/)
 // 3) npx cap sync android → ينسخ الأصول إلى مشروع أندرويد
 import { execSync } from "node:child_process";
-import { readdirSync, writeFileSync, existsSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 
 const ROOT = new URL("..", import.meta.url).pathname;
 process.chdir(ROOT);
 
-console.log("📦 1/3 بناء الويب...");
-execSync("npm run build", { stdio: "inherit" });
+console.log("📦 1/3 بناء تطبيق الجوال (SPA)...");
+execSync("npx vite build --config vite.mobile.config.ts", { stdio: "inherit" });
 
-const clientDir = "dist/client";
-const assetsDir = `${clientDir}/assets`;
-if (!existsSync(assetsDir)) throw new Error("لم يوجد مجلد assets — تأكد من نجاح npm run build");
+if (!existsSync("dist-mobile/src/entry-mobile.html")) throw new Error("فشل البناء — لا يوجد dist-mobile/src/entry-mobile.html");
 
-const files = readdirSync(assetsDir);
-const clientJs = files.find((f) => f.startsWith("client-") && f.endsWith(".js"));
-const cssFiles = files.filter((f) => f.endsWith(".css")).sort();
-if (!clientJs) throw new Error("لم يوجد ملف client JS في assets");
-
-console.log(`🎨 2/3 توليد index.html (client=${clientJs}, css=${cssFiles.length})`);
-const html = `<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <meta name="theme-color" content="#F8FAFC" />
-    <title>SooQy</title>
-    <link rel="manifest" href="/manifest.webmanifest" />
-    <link rel="icon" href="/icon-192.png" type="image/png" />
-    ${cssFiles.map((f) => `    <link rel="stylesheet" href="/assets/${f}" />`).join("\n")}
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/assets/${clientJs}"></script>
-  </body>
-</html>
-`;
-writeFileSync(`${clientDir}/index.html`, html);
+console.log("📄 2/3 نقل HTML إلى جذر dist-mobile/index.html...");
+const html = readFileSync("dist-mobile/src/entry-mobile.html", "utf8")
+  .replaceAll("../assets/", "assets/");
+writeFileSync("dist-mobile/index.html", html);
 
 console.log("📱 3/3 مزامنة Capacitor...");
 execSync("npx cap sync android", { stdio: "inherit" });
-console.log("✅ جاهز — ابنِ APK عبر: cd android && ./gradlew assembleDebug");
+
+console.log("✅ تم — dist-mobile جاهزة و android/ محدّثة");

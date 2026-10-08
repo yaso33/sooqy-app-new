@@ -1,50 +1,26 @@
-# خطة إعادة تصميم SooQy — Design Specification v1.0 (نسخة معدّلة)
+# خطة إصلاح الشاشة البيضاء في تطبيق أندرويد (APK)
 
-**القواعد المُلزمة (حسب طلبك):**
-1. **تغييرات تصميمية فقط** — لا هجرات SQL، لا جداول جديدة، لا تغيير في دوال `src/lib/sooqy.ts` المنطقية أو Supabase.
-2. **صفر بيانات تجريبية** — كل شاشة تعرض بيانات حقيقية من قاعدة البيانات عبر الدوال الموجودة. أي شاشة ليس لها مصدر بيانات حقيقي تُعرض بحالة فارغة صادقة (لا عناصر وهمية).
-3. **الإضافات الجديدة مسموحة** شرط أن تعرض بيانات حقيقية أو تخزّن اختيارات المستخدم محليًا (مثل المفضلة).
+## السياق
+التطبيق يعمل بشكل طبيعي في المتصفح (`npm run dev`)، لكن داخل الـ APK (Capacitor WebView) تظهر شاشة بيضاء فارغة. المشروع مبني بـ **TanStack Start** (أسلوب SSR — الخادم يصدّر HTML كامل + حمولة hydration `__TSR__`)، بينما الـ APK يقدّم **ملفات ثابتة فقط** (`dist/client`). الفرضية الأساسية: `index.html` المولّد يفتقر لحمولة SSR، فيفشل العميل في الرسم بصمت (بدون أخطاء console) → شاشة بيضاء.
 
----
+## المرحلة 1: تشخيص نهائي (قبل أي تعديل)
+- تشغيل `scripts/serve-static.mjs` على `dist/client` (نفس ما يقدّمه WebView) وفحص headless مع **فحص DOM فعلي**: عدد أطفال `#root`، طول نص body، رسائل hydration في console (`errors_only: false`).
+- فحص `dist/client/index.html` الحالي: هل يحتوي حمولة `__TSR__` أو `<div id="root">` فارغ؟
+- النتيجة تحسم السبب: غياب حمولة SSR أم خطأ JS آخر.
 
-## المرحلة 1 — نظام التصميم (`src/styles.css`)
-- استبدال لوحة البرتقالي بمنظومة **Indigo/Violet**: Primary `#6366F1` · Dark `#4F46E5` · Light `#E0E7FF` · خلفية `#F8FAFC` · سطح `#FFFFFF` · نصوص `#111827/#64748B/#94A3B8` · حدود `#E2E8F0` + متغيرات Dark Mode جاهزة.
-- Typography: Display 32/Bold · H1 24 · H2 20 · H3 18 · Body 16/14 · Caption 12 · Price 20/Bold.
-- Radius موحّد 8/12/16/20/Pill، ظلال خفيفة جدًا (البطاقات بـ Background+Border).
-- أزرار 48px/Radius 12 بحالاتها، Search Bar 48px/12.
+## المرحلة 2: الحل الأساسي — توليد index.html حقيقي عبر SSR (prerender)
+- سكربت جديد `scripts/prerender.mjs`:
+  1. تشغيل خادم Nitro المبني (`dist/server/server.js`) على منفذ محلي
+  2. جلب `/` وحفظ HTML الناتج (يحتوي التطبيق المُصدَّر فعليًا + حمولة hydration `__TSR__`)
+  3. إعادة كتابة المسارات المطلقة `/assets/...` إلى نسبية `assets/...` (توافق WebView)
+  4. **fallback**: لو فشل SSR (مثلًا Supabase غير متاح في CI) → HTML بديل يحمّل الحزمة (السلوك الحالي) مع تحذير واضح
+- ربطه في `scripts/build-mobile.mjs`: `build → prerender → cap sync`
+- تحديث `.github/workflows/android.yml`: تمرير متغيرات البيئة من GitHub Secrets (`SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`) ليعمل الـ prerender داخل CI
 
-## المرحلة 2 — الهيكل والتنقل
-- `BottomNav` (5 عناصر: الرئيسية/الخريطة/اكتشف/السلة/حسابي، نشط Indigo، Badge على السلة).
-- `__root.tsx`: خلفية `#F8FAFC` + دمج Splash.
-- **Splash** (واجهة فقط): "SooQy" + "Discover. Shop. Local." ثم انتقال تلقائي (localStorage — لا بيانات).
-- **Onboarding** (3 شاشات + "ابدأ الآن"): يظهر مرة واحدة (localStorage — لا بيانات).
+## المرحلة 3: التحقق وبناء APK
+- محليًا: تشغيل البناء + المعاينة الثابتة + فحص DOM (أطفال `#root` > 0، نص body غير فارغ)
+- commit + push → الـ workflow يبني APK → تحميل artifact
+- **خطة بديلة** إن ثبت أن prerender غير مستقر: إدخال نقطة دخول SPA مستقلة للجوال (TanStack Router client-side فقط بدون Start) — تُبنى بجانب البناء الرئيسي
 
-## المرحلة 3 — الشاشات العشر الأساسية (كلها ببيانات حقيقية)
-| الشاشة | الملف | المصدر الحقيقي |
-|---|---|---|
-| الرئيسية | `index.tsx` + `cards.tsx` | `fetchNearStores` + `searchProducts` |
-| الخريطة | `map.tsx` | `fetchNearStores` + الخريطة الحالية |
-| اكتشف | `explore.tsx` | `searchProducts` + `searchStores` |
-| البحث (وضع داخل explore) | `explore.tsx` | `searchProducts` + `searchStores` |
-| المتجر | `stores.$storeId.tsx` | `getStore` + `getStoreOffers` + `fetchReviews` |
-| المنتج | `products.$productId.tsx` | `getProduct` + `getProductComparisonOffers` |
-| السلة | `bag.tsx` | `useBag` + `getOffersByIds` |
-| إتمام الطلب | `checkout.tsx` | `useBag` + `createOrderWithDelivery` |
-| الطلبات (جديد) | `orders.tsx` | `fetchMyOrders` — تبويبات حسب حالة حقيقية |
-| حسابي | `account.tsx` | `useAuth` + `fetchMyOrders` + `fetchMyReservations` |
-
-## المرحلة 4 — الإضافات الجديدة (بدون بيانات وهمية)
-- **المفضلة** (جديد `favorites.tsx`): تبويبان منتجات/متاجر — تحفظ **المعرفات فقط** في localStorage، وتعرض **البيانات الحقيقية** من قاعدة البيانات عبر الدوال الموجودة.
-- **تتبع الطلب** (جديد): Timeline مبني على **حالة الطلب الحقيقية** من `fetchMyOrders`.
-- **صفحة التصنيف** (جديد): فئات فرعية + Sort/Filter + شبكة — كلها من `searchProducts` الحقيقية.
-- **الإشعارات** (جديد `notifications.tsx`): **حالة فارغة صادقة فقط** ("لا توجد إشعارات بعد") لأن لا يوجد جدول إشعارات في قاعدة البيانات — بدون عناصر وهمية.
-- **التاجر** (`studio.tsx`): إعادة تصميم Onboarding + Dashboard + إضافة منتج — بنفس الدوال الموجودة `merchantCreateStore`/`fetchMyStore`/إلخ.
-
-## المرحلة 5 — حالات الواجهة
-- Skeleton Loading لكل الشاشات الرئيسية · Empty States موحّدة · Error States + "إعادة المحاولة" · حالات الأزرار والمدخلات.
-
-## المرحلة 6 — الفحص النهائي
-- `check_preview` لكل الشاشات (لا أخطاء JS/شاشات فارغة) · `CI=1 npm test` · `npm run build` · تحديث `AGENTS.md`.
-
----
-**تأكيد:** لا جدول جديد، لا هجرة SQL، لا بيانات تجريبية — كل ما يُعرض يأتي من قاعدة البيانات الحية، والمفضلة تحفظ اختيارات المستخدم محليًا فقط.
+## المرحلة 4: توثيق
+- تحديث `AGENTS.md` بآلية البناء الجديدة (prerender + متغيرات CI المطلوبة)
