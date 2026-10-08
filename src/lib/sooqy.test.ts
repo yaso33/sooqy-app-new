@@ -17,10 +17,10 @@ describe("stockLevel", () => {
 });
 
 describe("primaryImage", () => {
-  const images = [
-    { id: "1", offer_id: "o", image_url: "a.jpg", is_primary: false, sort_order: 1 },
-    { id: "2", offer_id: "o", image_url: "b.jpg", is_primary: true, sort_order: 2 },
-  ] as ProductImage[];
+  const images: ProductImage[] = [
+    { id: "1", offer_id: "o", image_url: "a.jpg", is_primary: false, created_at: "2026-01-01T00:00:00Z" },
+    { id: "2", offer_id: "o", image_url: "b.jpg", is_primary: true, created_at: "2026-01-01T00:00:00Z" },
+  ];
 
   it("يفضّل الصورة الأساسية", () => {
     expect(primaryImage(images)).toBe("b.jpg");

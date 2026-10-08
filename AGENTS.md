@@ -14,6 +14,7 @@
 
 ## اختبارات وتحليلات
 
+- صائد أخطاء الشاشة: `src/lib/screen-error.ts` (يُستورد في `__root.tsx`) — يعرض أي خطأ كطبقة فوق الواجهة حتى داخل WebView في APK: أخطاء JS، فشل تحميل ملفات JS/CSS، وعود مرفوضة، **كشف الشاشة البيضاء بعد 3.5 ثانية**، وحفظ آخر خطأ في `localStorage["sooqy:screen-error"]` ليُعرض عند التشغيل التالي. تقرير يدويًا: `reportScreenError(err, "سياق")` أو من console: `__sooqyReportError(new Error("..."))` — أزرار: إعادة المحاولة / نسخ التفاصيل / إغلاق.
 - اختبارات الوحدة: `src/lib/*.test.ts` (vitest). لتشغيلها أوقف dev server أولًا (الصدفة مشتركة): `stop_dev_server` ثم `CI=1 npx vitest run src/lib/geo.test.ts src/lib/sooqy.test.ts`.
 - تحليلات محلية بدون خدمات خارجية: `src/lib/analytics.ts` (`track(event, data)`) تخزّن الأحداث في `localStorage["sooqy:events"]` (آخر 200). أحداث: view_product / add_to_bag / begin_checkout / place_order / search.
 - التخزين المؤقت: QueryClient في `src/router.tsx` (staleTime 60s، gcTime 10m، preload intent).

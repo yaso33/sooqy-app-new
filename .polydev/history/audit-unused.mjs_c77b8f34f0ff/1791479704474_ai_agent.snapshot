@@ -1,0 +1,67 @@
+// فحص عميق: اعتميات غير مستخدمة + مكونات ui غير مستوردة + ملفات src بلا استيراد
+import fs from "node:fs";
+import path from "node:path";
+
+const root = process.cwd();
+
+function walk(dir, out = []) {
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, e.name);
+    if (e.isDirectory()) walk(p, out);
+    else out.push(p);
+  }
+  return out;
+}
+
+const srcFiles = walk(path.join(root, "src")).filter((f) => /\.(ts|tsx|css|mjs)$/.test(f));
+const allSrc = srcFiles.map((f) => fs.readFileSync(f, "utf8")).join("\n");
+const pkg = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
+
+// 1) اعتمادات npm
+const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+const unusedDeps = [];
+for (const dep of Object.keys(deps)) {
+  if (dep.startsWith("@types/") || dep.startsWith("@eslint/") || dep === "eslint" || dep === "prettier" || dep === "typescript" || dep === "globals") continue;
+  const variants = [dep, dep.replace(/^@\//, "")];
+  const used = variants.some((v) => allSrc.includes(v)) ||
+    // تحقق من سكربتات package.json والملفات الجذرية
+    fs.existsSync(path.join(root, "vite.config.ts")) && fs.readFileSync(path.join(root, "vite.config.ts"), "utf8").includes(dep) ||
+    fs.readFileSync(path.join(root, "vitest.config.ts"), "utf8").includes(dep) ||
+    Object.values(pkg.scripts).join(" ").includes(dep) ||
+    (fs.existsSync(path.join(root, "eslint.config.js")) && fs.readFileSync(path.join(root, "eslint.config.js"), "utf8").includes(dep));
+  if (!used) unusedDeps.push(dep);
+}
+
+// 2) مكونات ui (shadcn) غير المستوردة
+const uiDir = path.join(root, "src/components/ui");
+const unusedUi = [];
+if (fs.existsSync(uiDir)) {
+  for (const f of fs.readdirSync(uiDir)) {
+    const name = f.replace(/\.tsx?$/, "");
+    const used = allSrc.includes(`components/ui/${name}`) || allSrc.includes(`from "@/components/ui/${name}"`);
+    if (!used) unusedUi.push(f);
+  }
+}
+
+// 3) ملفات src غير مُستوردة (باستثنار entry/ routes/ tests/ css/ gen)
+const entries = new Set(["src/router.tsx", "src/server.ts", "src/start.ts", "src/styles.css", "src/routeTree.gen.ts"]);
+const unusedFiles = [];
+const routeFiles = new Set(walk(path.join(root, "src/routes")).map((f) => path.relative(root, f)));
+for (const f of srcFiles) {
+  const rel = path.relative(root, f);
+  if (entries.has(rel) || routeFiles.has(rel)) continue;
+  if (/\.test\.tsx?$/.test(f)) continue;
+  const base = path.basename(f).replace(/\.tsx?$/, "");
+  // اسم الملف يُستورد إمّا بمساره أو بالاسم في import
+  const byPath = allSrc.includes(rel.replace(/\\/g, "/")) || allSrc.includes(rel.replace(/^src\//, "").replace(/\\/g, "/"));
+  const byName = new RegExp(`from ["'][^"']*${base}["']`).test(allSrc);
+  const byDirName = new RegExp(`from ["'][^"']*/${path.basename(path.dirname(f))}/${base}["']`).test(allSrc);
+  if (!byPath && !byName && !byDirName) unusedFiles.push(rel);
+}
+
+console.log("=== اعتمادات npm غير مستخدمة ===");
+unusedDeps.forEach((d) => console.log(" -", d));
+console.log("=== مكونات ui غير مستوردة ===");
+unusedUi.forEach((u) => console.log(" -", u));
+console.log("=== ملفات src بلا استيراد (مرشّح) ===");
+unusedFiles.forEach((u) => console.log(" -", u));

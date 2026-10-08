@@ -1,0 +1,51 @@
+// دقيق v3: بعد استبعاد ملفات ui الزائدة — أي اعتمادات تصبح غير مستخدمة فعليًا؟
+// + التحقق اليدوي من الملفات المشبوهة (استيراد عبر أسماء بديلة)
+import fs from "node:fs";
+import path from "node:path";
+
+const root = process.cwd();
+function walk(dir, out = []) {
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, e.name);
+    if (e.isDirectory()) walk(p, out);
+    else out.push(p);
+  }
+  return out;
+}
+
+const UNUSED_UI = ["alert.tsx", "breadcrumb.tsx", "calendar.tsx", "chart.tsx", "command.tsx", "drawer.tsx", "pagination.tsx", "resizable.tsx", "sidebar.tsx", "table.tsx", "textarea.tsx"];
+
+const srcFiles = walk(path.join(root, "src")).filter((f) => /\.(ts|tsx)$/.test(f))
+  .filter((f) => !UNUSED_UI.includes(path.basename(f)));
+
+const allSrc = srcFiles.map((f) => fs.readFileSync(f, "utf8")).join("\n");
+const rootCfg = ["vite.config.ts", "vitest.config.ts", "eslint.config.js", "capacitor.config.ts", "tsconfig.json", "scripts/apply-migrations.mjs", "scripts/build-mobile.mjs", "scripts/serve-static.mjs", "scripts/gen-android-icons.sh", "scripts/icon-inspect.mjs", ".github/workflows/android.yml"]
+  .map((f) => (fs.existsSync(f) ? fs.readFileSync(f, "utf8") : ""))
+  .join("\n");
+const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+const all = allSrc + rootCfg + JSON.stringify(pkg.scripts);
+
+console.log("=== اعتمادات (بعد حذف ui الزائدة) ===");
+const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+const unused = [];
+for (const dep of Object.keys(deps)) {
+  // أدوات بناء/تحليل تُستخدم عبر CLI أو إعدادات لا تظهر كنص
+  const cliTools = new Set(["eslint", "prettier", "typescript", "vite", "vitest", "jsdom", "@vitejs/plugin-react", "globals", "typescript-eslint", "eslint-plugin-react-hooks", "eslint-plugin-react-refresh", "eslint-plugin-prettier", "eslint-config-prettier", "@eslint/js", "@types/node", "@types/react", "@types/react-dom", "@types/leaflet", "@testing-library/react", "@testing-library/jest-dom", "@capacitor/cli", "@capacitor/android", "@capacitor/core", "tailwindcss", "@tailwindcss/vite", "vite-tsconfig-paths", "react", "react-dom", "@fontsource/tajawal"]);
+  const hit = all.includes(dep) || all.includes(dep.split("/").pop());
+  if (!hit && !cliTools.has(dep)) unused.push(dep);
+}
+unused.forEach((d) => console.log(" -", d));
+
+console.log("=== فحص يدوي: pull-to-refresh ===");
+console.log(" mentions:", (allSrc.match(/pull-to-refresh|PullToRefresh/g) || []).length);
+console.log("=== فحص يدوي: auth-middleware / cron-auth / client.server ===");
+for (const n of ["auth-middleware", "cron-auth", "client.server", "auth-attacher"]) {
+  const hits = (allSrc.match(new RegExp(n, "g")) || []).length;
+  console.log(` ${n}: ${hits}`);
+}
+console.log("=== الاستيرادات الفعلية لـ integrations/supabase ===");
+for (const f of walk(path.join(root, "src/integrations"))) {
+  console.log(" file:", path.relative(root, f));
+}
+const integrationImports = (allSrc.match(/integrations\/supabase\/[a-z.-]+/g) || []);
+console.log([...new Set(integrationImports)].join("\n"));

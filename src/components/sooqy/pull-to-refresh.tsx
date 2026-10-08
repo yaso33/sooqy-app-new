@@ -23,15 +23,17 @@ export function PullToRefresh({
   const [refreshing, setRefreshing] = useState(false);
 
   const onTouchStart = useCallback((e: TouchEvent<HTMLDivElement>) => {
-    if (window.scrollY <= 0) {
-      startY.current = e.touches[0].clientY;
+    const touch = e.touches[0];
+    if (touch && window.scrollY <= 0) {
+      startY.current = touch.clientY;
       pulling.current = true;
     }
   }, []);
 
   const onTouchMove = useCallback((e: TouchEvent<HTMLDivElement>) => {
-    if (!pulling.current || startY.current == null) return;
-    const dy = e.touches[0].clientY - startY.current;
+    const touch = e.touches[0];
+    if (!touch || !pulling.current || startY.current == null) return;
+    const dy = touch.clientY - startY.current;
     if (dy > 0) setPull(Math.min(120, dy * 0.5));
   }, []);
 

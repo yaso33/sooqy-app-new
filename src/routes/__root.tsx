@@ -10,6 +10,8 @@ import {
 } from "@tanstack/react-router";
 import { type ReactNode } from "react";
 
+// صائد أخطاء الشاشة — يجب أن يُستورد أولًا ليعتمد قبل أي طبقة أخرى (يتجاهل SSR)
+import "@/lib/screen-error";
 import "@fontsource/tajawal/400.css";
 import "@fontsource/tajawal/500.css";
 import "@fontsource/tajawal/700.css";
