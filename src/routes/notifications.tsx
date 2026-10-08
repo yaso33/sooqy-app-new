@@ -1,0 +1,121 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArrowRight, Bell, Package, Tag, CalendarCheck, Info } from "lucide-react";
+import { useAuth } from "@/lib/auth";
+import { fetchMyNotifications, markNotificationsRead } from "@/lib/sooqy";
+import { EmptyState } from "@/components/sooqy/empty-state";
+import { cn } from "@/lib/utils";
+
+export const Route = createFileRoute("/notifications")({
+  component: NotificationsPage,
+});
+
+const TYPE_ICON = {
+  order: Package,
+  offer: Tag,
+  reservation: CalendarCheck,
+  system: Info,
+  info: Info,
+} as const;
+
+function NotificationsPage() {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const q = useQuery({
+    queryKey: ["notifications"],
+    queryFn: fetchMyNotifications,
+    enabled: !!user,
+  });
+
+  const markAll = async () => {
+    await markNotificationsRead();
+    qc.invalidateQueries({ queryKey: ["notifications"] });
+  };
+
+  return (
+    <div className="px-4 pt-4">
+      <header className="flex items-center justify-between py-1">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => window.history.back()}
+            aria-label="رجوع"
+            className="icon-btn"
+          >
+            <ArrowRight className="size-5" />
+          </button>
+          <h1 className="text-h2 text-foreground">الإشعارات</h1>
+        </div>
+        {q.data && q.data.some((n) => !n.read) && (
+          <button onClick={markAll} className="text-sm font-bold text-primary">
+            قراءة الكل
+          </button>
+        )}
+      </header>
+
+      {!user && (
+        <EmptyState
+          icon={<span className="text-4xl">🔒</span>}
+          title="سجّل الدخول لعرض إشعاراتك"
+          hint="تظهر إشعارات طلباتك وحجوزاتك بعد تسجيل الدخول."
+          action={
+            <Link to="/auth" className="btn-small">
+              تسجيل الدخول
+            </Link>
+          }
+        />
+      )}
+
+      {user && q.isLoading && (
+        <div className="space-y-3 py-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-16 animate-pulse rounded-2xl bg-muted" />
+          ))}
+        </div>
+      )}
+
+      {user && q.data && q.data.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-24 text-center">
+          <span className="flex size-20 items-center justify-center rounded-3xl bg-primary-soft">
+            <Bell className="size-9 text-primary" strokeWidth={1.6} />
+          </span>
+          <h2 className="mt-5 text-h3 text-foreground">لا توجد إشعارات بعد</h2>
+          <p className="mt-2 max-w-xs text-body text-muted-foreground">
+            عندما تصلك تحديثات عن طلباتك أو عروض جديدة من المتاجر، ستظهر هنا.
+          </p>
+          <Link to="/" className="btn-small mt-6">
+            تصفح المنتجات
+          </Link>
+        </div>
+      )}
+
+      {user && q.data && q.data.length > 0 && (
+        <div className="space-y-2 py-4">
+          {q.data.map((n) => {
+            const Icon = TYPE_ICON[n.type as keyof typeof TYPE_ICON] ?? Info;
+            return (
+              <div
+                key={n.id}
+                className={cn(
+                  "flex items-start gap-3 rounded-2xl border p-3 transition",
+                  n.read ? "border-border bg-card" : "border-primary/30 bg-primary-soft/40",
+                )}
+              >
+                <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary-soft-foreground">
+                  <Icon className="size-4" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-foreground">{n.title}</p>
+                  {n.body && <p className="mt-0.5 text-xs text-muted-foreground">{n.body}</p>}
+                  <p className="mt-1 text-[10px] text-muted-foreground">
+                    {new Date(n.created_at).toLocaleString("ar-DZ")}
+                  </p>
+                </div>
+                {!n.read && <span className="mt-1.5 size-2 shrink-0 rounded-full bg-primary" />}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}

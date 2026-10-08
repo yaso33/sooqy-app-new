@@ -1,0 +1,41 @@
+import { useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
+
+/**
+ * شاشة البداية — تظهر لحظيًا عند كل تشغيل ثم تختفي بسلاسة.
+ * واجهة فقط، بلا أي بيانات.
+ */
+export function Splash() {
+  const [phase, setPhase] = useState<"show" | "hide" | "gone">("show");
+
+  useEffect(() => {
+    const t1 = setTimeout(() => setPhase("hide"), 1500);
+    const t2 = setTimeout(() => setPhase("gone"), 2100);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, []);
+
+  if (phase === "gone") return null;
+
+  return (
+    <div
+      aria-hidden="true"
+      className={cn(
+        "fixed inset-0 z-[100] flex flex-col items-center justify-center bg-card transition-opacity duration-500",
+        phase === "hide" && "pointer-events-none opacity-0",
+      )}
+    >
+      <div className="flex items-center gap-2.5 animate-scale-in">
+        <span className="flex size-11 items-center justify-center rounded-2xl bg-primary shadow-soft">
+          <span className="text-xl font-extrabold text-primary-foreground">S</span>
+        </span>
+        <span className="text-display text-foreground">SooQy</span>
+      </div>
+      <p className="mt-3 text-sm font-medium text-muted-foreground animate-fade-up delay-100">
+        Discover. Shop. Local.
+      </p>
+    </div>
+  );
+}

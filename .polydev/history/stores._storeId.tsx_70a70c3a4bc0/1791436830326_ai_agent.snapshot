@@ -1,0 +1,148 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { Clock, MapPin, MessageCircle, Navigation, Phone, Star } from "lucide-react";
+import { directionsUrl, formatDA, isOpenNow, type OpeningHours } from "@/lib/geo";
+import { categoryLabel, getStore, getStoreOffers, primaryImage, stockLevel } from "@/lib/sooqy";
+import { OpenBadge, StockBadge, VerifiedBadge } from "@/components/sooqy/badges";
+import { ReviewSection } from "@/components/sooqy/ReviewSection";
+
+export const Route = createFileRoute("/stores/$storeId")({
+  head: () => ({
+    meta: [
+      { title: "متجر المحل — SOOQY" },
+      { name: "description", content: "شاهد جميع سلع المحل وأسعارها ومواعيد العمل." },
+      { property: "og:title", content: "المتجر الرقمي — SOOQY" },
+      { property: "og:description", content: "سلع وأسعار المحل محدثة يومياً." },
+    ],
+  }),
+  component: StorePage,
+});
+
+const DAYS = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+
+function StorePage() {
+  const { storeId } = Route.useParams();
+  const store = useQuery({ queryKey: ["store", storeId], queryFn: () => getStore(storeId) });
+  const offers = useQuery({
+    queryKey: ["store-offers", storeId],
+    queryFn: () => getStoreOffers(storeId),
+  });
+
+  if (store.isLoading) return <div className="m-4 h-64 animate-pulse rounded-3xl bg-card" />;
+  const s = store.data;
+  if (!s) return <p className="p-8 text-center">المحل غير موجود</p>;
+  const oh = (s.opening_hours ?? {}) as OpeningHours;
+
+  const byCat = new Map<string, NonNullable<typeof offers.data>>();
+  for (const o of offers.data ?? []) {
+    const k = o.product.category;
+    byCat.set(k, [...(byCat.get(k) ?? []), o]);
+  }
+
+  return (
+    <div className="pb-6">
+      <div className="relative h-48 bg-ink">
+        {s.cover_url && (
+          <img src={s.cover_url} alt="" className="size-full object-cover opacity-80" />
+        )}
+        <div className="absolute -bottom-10 right-4 size-20 overflow-hidden rounded-2xl border-4 border-background bg-card shadow-soft">
+          {s.logo_url ? (
+            <img src={s.logo_url} alt={s.name} className="size-full object-cover" />
+          ) : (
+            <div className="flex size-full items-center justify-center text-2xl font-bold text-primary">
+              {s.name[0]}
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="space-y-4 px-4 pt-12">
+        <div className="space-y-1.5">
+          <h1 className="text-2xl font-bold">{s.name}</h1>
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <OpenBadge open={isOpenNow(s.opening_hours)} />
+            {s.is_verified && <VerifiedBadge />}
+            <span className="flex items-center gap-0.5 text-muted-foreground">
+              <Star className="size-3 fill-warning text-warning" /> {Number(s.rating).toFixed(1)}
+            </span>
+          </div>
+          {s.description && <p className="text-sm text-muted-foreground">{s.description}</p>}
+          <p className="flex items-center gap-1 text-xs text-muted-foreground">
+            <MapPin className="size-3.5" /> {[s.address_line, s.commune].filter(Boolean).join("، ")}
+          </p>
+          <p className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Clock className="size-3.5" /> {oh.open} - {oh.close}
+            {oh.closed_days?.length
+              ? ` · مغلق: ${oh.closed_days.map((d) => DAYS[d]).join("، ")}`
+              : " · كل أيام الأسبوع"}
+          </p>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          <a
+            href={`tel:${s.phone ?? ""}`}
+            className="flex items-center justify-center gap-1 rounded-xl bg-card py-2.5 text-xs font-semibold shadow-soft"
+          >
+            <Phone className="size-4" /> اتصال
+          </a>
+          <a
+            href={`https://wa.me/${(s.whatsapp ?? "").replace(/\D/g, "")}`}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center justify-center gap-1 rounded-xl bg-success/12 py-2.5 text-xs font-semibold text-success"
+          >
+            <MessageCircle className="size-4" /> واتساب
+          </a>
+          <a
+            href={directionsUrl(s.latitude, s.longitude, s.name)}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center justify-center gap-1 rounded-xl bg-ink py-2.5 text-xs font-semibold text-ink-foreground"
+          >
+            <Navigation className="size-4" /> الاتجاهات
+          </a>
+        </div>
+
+        <ReviewSection targetType="store" targetId={s.id} title="تقييمات المحل" />
+
+        {[...byCat.entries()].map(([cat, list]) => (
+          <section key={cat} className="space-y-2">
+            <h2 className="font-bold">{categoryLabel(cat)}</h2>
+            <div className="grid grid-cols-2 gap-3">
+              {list.map((o) => (
+                <Link
+                  key={o.id}
+                  to="/products/$productId"
+                  params={{ productId: o.product_id }}
+                  className="overflow-hidden rounded-2xl bg-card shadow-soft"
+                >
+                  <div className="relative aspect-square bg-muted">
+                    {primaryImage(o.images) && (
+                      <img
+                        src={primaryImage(o.images)!}
+                        alt={o.product.name}
+                        loading="lazy"
+                        className="size-full object-cover"
+                      />
+                    )}
+                    <StockBadge
+                      level={stockLevel(o)}
+                      className="absolute top-2 right-2 bg-card/95"
+                    />
+                  </div>
+                  <div className="p-3">
+                    <p className="line-clamp-1 text-sm font-semibold">{o.product.name}</p>
+                    <p className="font-bold">{formatDA(o.price)}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        ))}
+        {!offers.isLoading && !offers.data?.length && (
+          <p className="rounded-2xl bg-card p-6 text-center text-sm text-muted-foreground">
+            المحل مازال ما زاد حتى سلعة.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}

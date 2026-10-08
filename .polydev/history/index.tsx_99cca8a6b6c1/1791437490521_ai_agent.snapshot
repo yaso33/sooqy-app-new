@@ -1,0 +1,173 @@
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { Flame, MapPin, Search } from "lucide-react";
+import { greeting, useGeo } from "@/lib/geo";
+import { CATEGORIES, fetchNearStores, searchProducts } from "@/lib/sooqy";
+import { ProductCard, StoreCard } from "@/components/sooqy/cards";
+import { WilayaSelect } from "@/components/sooqy/WilayaSelect";
+import { cn } from "@/lib/utils";
+
+export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "SOOQY — شاهد السلعة في المحلات القريبة منك" },
+      { name: "description", content: "قبل الخروج للبحث عن المنتج، شاهده في SOOQY. أسعار ومخزون المحلات الجزائرية لحظة بلحظة." },
+      { property: "og:title", content: "SOOQY — السوق الجزائري في جيبك" },
+      { property: "og:description", content: "قارن الأسعار، واحجز واستلم من المحل، أو اطلب التوصيل إلى 58 ولاية." },
+    ],
+  }),
+  component: Home,
+});
+
+type Pulse = "open" | "near" | "deals";
+
+function Home() {
+  const navigate = useNavigate();
+  const { pos } = useGeo();
+  const [wilaya, setWilaya] = useState<number | null>(null);
+  const [q, setQ] = useState("");
+  const [pulse, setPulse] = useState<Pulse>("near");
+  const [hello, setHello] = useState("أهلاً بك");
+
+  useEffect(() => {
+    setHello(greeting());
+    const w = localStorage.getItem("sooqy:wilaya");
+    if (w) setWilaya(Number(w));
+  }, []);
+  const changeWilaya = (w: number | null) => {
+    setWilaya(w);
+    if (w) localStorage.setItem("sooqy:wilaya", String(w));
+    else localStorage.removeItem("sooqy:wilaya");
+  };
+
+  const stores = useQuery({
+    queryKey: ["near-stores", wilaya, pos?.lat, pos?.lng],
+    queryFn: () => fetchNearStores(wilaya, pos?.lat, pos?.lng),
+  });
+  const trending = useQuery({
+    queryKey: ["trending", wilaya, pos?.lat],
+    queryFn: () => searchProducts({ wilaya, pos, sortBy: "newest", limit: 60 }),
+  });
+
+  let storeList = stores.data ?? [];
+  if (pulse === "open") storeList = storeList.filter((s) => s.open);
+  let products = trending.data ?? [];
+  if (pulse === "deals") products = products.filter((g) => g.offers.some((o) => o.old_price && o.old_price > o.price));
+  if (pulse === "near") products = [...products].sort((a, b) => (a.nearestKm ?? 1e9) - (b.nearestKm ?? 1e9));
+
+  return (
+    <div className="space-y-6 px-4 pt-6">
+      <header className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm text-muted-foreground">{hello}</p>
+          <h1 className="text-2xl font-bold leading-tight">
+            SOOQY <span className="text-primary">🇩🇿</span>
+          </h1>
+          <p className="mt-1 text-xs text-muted-foreground">قبل الخروج للبحث عن المنتج، شاهده في SOOQY</p>
+        </div>
+        <div className="flex items-center gap-1">
+          <MapPin className="size-4 text-primary" />
+          <WilayaSelect value={wilaya} onChange={changeWilaya} className="h-9 max-w-36 text-xs" />
+        </div>
+      </header>
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          navigate({ to: "/explore", search: { q: q.trim() || undefined } });
+        }}
+        className="rounded-3xl bg-ink p-4 text-ink-foreground shadow-lift"
+      >
+        <label className="text-lg font-bold" htmlFor="home-search">
+          ماذا تريد أن تشتري؟
+        </label>
+        <div className="mt-3 flex items-center gap-2 rounded-2xl bg-card px-3 text-card-foreground">
+          <Search className="size-5 text-muted-foreground" />
+          <input
+            id="home-search"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Air Max، iPhone، عطر..."
+            className="h-12 flex-1 bg-transparent text-sm outline-none"
+          />
+          <button className="rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground">ابحث</button>
+        </div>
+        <div className="no-scrollbar mt-3 flex gap-2 overflow-x-auto">
+          {CATEGORIES.slice(0, 5).map((c) => (
+            <Link
+              key={c.id}
+              to="/explore"
+              search={{ cat: c.id }}
+              className="shrink-0 rounded-full bg-ink-foreground/10 px-3 py-1.5 text-xs font-medium"
+            >
+              {c.emoji} {c.label}
+            </Link>
+          ))}
+        </div>
+      </form>
+
+      <div className="no-scrollbar flex gap-2 overflow-x-auto">
+        {(
+          [
+            { id: "open", label: "مفتوح الآن", icon: <span className="size-2 rounded-full bg-success live-dot" /> },
+            { id: "near", label: "الأقرب إليك", icon: <MapPin className="size-3.5" /> },
+            { id: "deals", label: "عروض اليوم", icon: <Flame className="size-3.5" /> },
+          ] as const
+        ).map((p) => (
+          <button
+            key={p.id}
+            onClick={() => setPulse(p.id)}
+            className={cn(
+              "flex shrink-0 items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-semibold transition",
+              pulse === p.id ? "border-ink bg-ink text-ink-foreground" : "bg-card",
+            )}
+          >
+            {p.icon} {p.label}
+          </button>
+        ))}
+      </div>
+
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-bold">المحلات القريبة</h2>
+          <Link to="/stores" className="text-sm font-semibold text-primary">
+            الكل
+          </Link>
+        </div>
+        {stores.isLoading && <SkeletonRows />}
+        {!stores.isLoading && storeList.length === 0 && <Empty text="لا توجد محلات بهذا الفلتر حالياً" />}
+        <div className="space-y-3">
+          {storeList.slice(0, 4).map((s) => (
+            <StoreCard key={s.id} s={s} distance={s.distance} />
+          ))}
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-lg font-bold">{pulse === "deals" ? "🔥 عروض اليوم" : "الرائج الآن"}</h2>
+        {trending.isLoading && <SkeletonRows />}
+        {!trending.isLoading && products.length === 0 && <Empty text="لا توجد سلع هنا بعد" />}
+        <div className="grid grid-cols-2 gap-3">
+          {products.slice(0, 12).map((g) => (
+            <ProductCard key={g.product.id} g={g} />
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function SkeletonRows() {
+  return (
+    <div className="space-y-3">
+      {[0, 1].map((i) => (
+        <div key={i} className="h-24 animate-pulse rounded-2xl bg-card" />
+      ))}
+    </div>
+  );
+}
+
+export function Empty({ text }: { text: string }) {
+  return <p className="rounded-2xl bg-card p-6 text-center text-sm text-muted-foreground">{text}</p>;
+}

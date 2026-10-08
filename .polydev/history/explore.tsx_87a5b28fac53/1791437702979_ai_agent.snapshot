@@ -1,0 +1,151 @@
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { LayoutGrid, Search, Store as StoreIcon } from "lucide-react";
+import { useGeo } from "@/lib/geo";
+import { CATEGORIES, searchProducts, searchStores, storeDistance, type SortBy } from "@/lib/sooqy";
+import { ProductCard, StoreCard } from "@/components/sooqy/cards";
+import { WilayaSelect } from "@/components/sooqy/WilayaSelect";
+import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
+
+type Search = { q?: string | undefined; cat?: string | undefined; w?: number | undefined; stock?: boolean | undefined; sort?: SortBy | undefined; view?: "products" | "stores" | undefined };
+
+export const Route = createFileRoute("/explore")({
+  validateSearch: (s: Record<string, unknown>): Search => ({
+    q: typeof s["q"] === "string" ? s["q"] : undefined,
+    cat: typeof s["cat"] === "string" ? s["cat"] : undefined,
+    w: s["w"] != null && !Number.isNaN(Number(s["w"])) ? Number(s["w"]) : undefined,
+    stock: s["stock"] === true || s["stock"] === "true" ? true : undefined,
+    sort: ["cheapest", "nearest", "rating", "newest"].includes(String(s["sort"])) ? (s["sort"] as SortBy) : undefined,
+    view: s["view"] === "stores" ? "stores" : undefined,
+  }),
+  head: () => ({
+    meta: [
+      { title: "البحث والاستكشاف — SOOQY" },
+      { name: "description", content: "ابحث عن أي سلعة واكتشف أين تتوفر، وبأي سعر، ومدى قربها منك." },
+      { property: "og:title", content: "البحث عن السلعة — SOOQY" },
+      { property: "og:description", content: "بحث فوري في مخزون المحلات الجزائرية." },
+    ],
+  }),
+  component: Explore,
+});
+
+function useDebounced<T>(v: T, ms = 300) {
+  const [d, setD] = useState(v);
+  useEffect(() => {
+    const t = setTimeout(() => setD(v), ms);
+    return () => clearTimeout(t);
+  }, [v, ms]);
+  return d;
+}
+
+function Explore() {
+  const s = Route.useSearch();
+  const navigate = useNavigate({ from: "/explore" });
+  const { pos } = useGeo();
+  const [text, setText] = useState(s.q ?? "");
+  const q = useDebounced(text);
+  const view = s.view ?? "products";
+  const set = (patch: Partial<Search>) => navigate({ search: (prev) => ({ ...prev, ...patch }), replace: true });
+
+  useEffect(() => {
+    if ((s.q ?? "") !== q) set({ q: q || undefined });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q]);
+
+  const products = useQuery({
+    queryKey: ["search", q, s.cat, s.w, s.stock, s.sort, pos?.lat],
+    queryFn: () => searchProducts({ query: q, category: s.cat ?? null, wilaya: s.w ?? null, inStockOnly: !!s.stock, sortBy: s.sort ?? "newest", pos }),
+    enabled: view === "products",
+  });
+  const stores = useQuery({
+    queryKey: ["search-stores", q, s.w],
+    queryFn: () => searchStores(q, s.w ?? null),
+    enabled: view === "stores",
+  });
+
+  return (
+    <div className="space-y-4 px-4 pt-5">
+      <div className="sticky top-0 z-20 -mx-4 space-y-3 bg-background/95 px-4 pb-3 pt-1 backdrop-blur">
+        <div className="flex items-center gap-2 rounded-2xl bg-card px-3 shadow-soft">
+          <Search className="size-5 text-muted-foreground" />
+          <input
+            autoFocus
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="ماذا تريد أن تشتري؟"
+            className="h-12 flex-1 bg-transparent text-sm outline-none"
+          />
+        </div>
+        <div className="no-scrollbar flex gap-2 overflow-x-auto">
+          <Chip active={!s.cat} onClick={() => set({ cat: undefined })}>
+            الكل
+          </Chip>
+          {CATEGORIES.map((c) => (
+            <Chip key={c.id} active={s.cat === c.id} onClick={() => set({ cat: s.cat === c.id ? undefined : c.id })}>
+              {c.emoji} {c.label}
+            </Chip>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <WilayaSelect value={s.w ?? null} onChange={(w) => set({ w: w ?? undefined })} className="h-9 text-xs" />
+          <select
+            value={s.sort ?? "newest"}
+            onChange={(e) => set({ sort: e.target.value as SortBy })}
+            className="h-9 rounded-xl border bg-card px-2 text-xs font-medium"
+          >
+            <option value="newest">الأحدث</option>
+            <option value="cheapest">الأرخص</option>
+            <option value="nearest">الأقرب</option>
+            <option value="rating">الأعلى تقييماً</option>
+          </select>
+          <label className="flex items-center gap-2 rounded-xl bg-card px-3 py-1.5 text-xs font-medium">
+            <Switch checked={!!s.stock} onCheckedChange={(v) => set({ stock: v || undefined })} />
+            متوفر في المحل الآن
+          </label>
+          <div className="ms-auto flex rounded-xl bg-card p-1">
+            <button aria-label="المنتجات" onClick={() => set({ view: undefined })} className={cn("rounded-lg p-1.5", view === "products" && "bg-ink text-ink-foreground")}>
+              <LayoutGrid className="size-4" />
+            </button>
+            <button aria-label="المحلات" onClick={() => set({ view: "stores" })} className={cn("rounded-lg p-1.5", view === "stores" && "bg-ink text-ink-foreground")}>
+              <StoreIcon className="size-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {view === "products" ? (
+        <>
+          <p className="text-xs text-muted-foreground">{products.isLoading ? "جارٍ البحث..." : `${products.data?.length ?? 0} نتيجة`}</p>
+          <div className="grid grid-cols-2 gap-3">
+            {products.data?.map((g) => (
+              <ProductCard key={g.product.id} g={g} />
+            ))}
+          </div>
+          {!products.isLoading && products.data?.length === 0 && (
+            <p className="rounded-2xl bg-card p-6 text-center text-sm text-muted-foreground">لم نعثر على نتائج. جرّب كلمة أخرى أو أزل الفلاتر.</p>
+          )}
+        </>
+      ) : (
+        <div className="space-y-3">
+          {stores.data?.map((st) => (
+            <StoreCard key={st.id} s={st} distance={storeDistance(st, pos)} />
+          ))}
+          {!stores.isLoading && stores.data?.length === 0 && <p className="rounded-2xl bg-card p-6 text-center text-sm text-muted-foreground">لا توجد محلات.</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn("shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold", active ? "border-primary bg-primary text-primary-foreground" : "bg-card")}
+    >
+      {children}
+    </button>
+  );
+}

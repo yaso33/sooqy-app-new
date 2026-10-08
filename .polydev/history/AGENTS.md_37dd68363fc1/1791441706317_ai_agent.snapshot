@@ -1,0 +1,28 @@
+<!-- LOVABLE:BEGIN -->
+> [!IMPORTANT]
+> This project is connected to [Lovable](https://lovable.dev). Avoid rewriting
+> published git history — force pushing, or rebasing/amending/squashing commits
+> that are already pushed — as it rewrites history on Lovable's side and the
+> user will likely lose their project history.
+>
+> Commits you push to the connected branch sync back to Lovable and show up in
+> the editor, so keep the branch in a working state.
+<!-- LOVABLE:END -->
+
+## اللغة
+
+- كل نصوص واجهة المستخدم بالعربية الفصحى (لا لهجة). حافظ على ذلك في أي نصوص جديدة.
+- Run: `npm run dev` (port 8080) · Build: `npm run build` · Test: `CI=1 npm test`
+
+## تصميم ومكونات
+
+- الخط: Cairo عبر `@fontsource/cairo` (مضمّن محليًا — لا Google Fonts). يُستورد في `src/routes/__root.tsx`.
+- نظام التصميم في `src/styles.css`: ألوان oklch (فاتح + `.dark`)، ظلال عبر utilities `shadow-soft/lift/pop/float`، حركات `animate-fade-up/pop/shake/scale-in`، واحترام `prefers-reduced-motion`.
+- مكونات SOOQY الموحّدة في `src/components/sooqy/`: `ProductCard`/`StoreCard` (cards.tsx)، `EmptyState`، `Skeleton`، `RatingStars`، `QtyStepper`، `Carousel` (embla)، `Reveal` (ظهور متدرج)، `PageHeader`، `PullToRefresh`.
+- كل الحركات عبر transform/opacity فقط (قاعدة أداء 60fps).
+
+## اختبارات وتحليلات
+
+- اختبارات الوحدة: `src/lib/*.test.ts` (vitest). لتشغيلها أوقف dev server أولًا (الصدفة مشتركة): `stop_dev_server` ثم `CI=1 npx vitest run src/lib/geo.test.ts src/lib/sooqy.test.ts`.
+- تحليلات محلية بدون خدمات خارجية: `src/lib/analytics.ts` (`track(event, data)`) تخزّن الأحداث في `localStorage["sooqy:events"]` (آخر 200). أحداث: view_product / add_to_bag / begin_checkout / place_order / search.
+- التخزين المؤقت: QueryClient في `src/router.tsx` (staleTime 60s، gcTime 10m، preload intent).

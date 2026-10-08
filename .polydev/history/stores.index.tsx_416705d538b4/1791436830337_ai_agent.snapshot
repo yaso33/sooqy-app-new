@@ -1,0 +1,40 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useGeo } from "@/lib/geo";
+import { fetchNearStores } from "@/lib/sooqy";
+import { StoreCard } from "@/components/sooqy/cards";
+import { WilayaSelect } from "@/components/sooqy/WilayaSelect";
+
+export const Route = createFileRoute("/stores/")({
+  head: () => ({
+    meta: [
+      { title: "المحلات — SOOQY" },
+      { name: "description", content: "كل المحلات المسجلة في SOOQY، مرتبة حسب القرب ومفتوحة دروك." },
+      { property: "og:title", content: "محلات SOOQY في 58 ولاية" },
+      { property: "og:description", content: "اكتشف البوتيكات الرقمية للمحلات الجزائرية." },
+    ],
+  }),
+  component: StoresPage,
+});
+
+function StoresPage() {
+  const { pos } = useGeo();
+  const [w, setW] = useState<number | null>(null);
+  const stores = useQuery({ queryKey: ["near-stores", w, pos?.lat, pos?.lng], queryFn: () => fetchNearStores(w, pos?.lat, pos?.lng) });
+  return (
+    <div className="space-y-4 px-4 pt-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">المحلات</h1>
+        <WilayaSelect value={w} onChange={setW} className="h-9 text-xs" />
+      </div>
+      {stores.isLoading && <div className="h-24 animate-pulse rounded-2xl bg-card" />}
+      <div className="space-y-3">
+        {stores.data?.map((s) => (
+          <StoreCard key={s.id} s={s} distance={s.distance} />
+        ))}
+      </div>
+      {!stores.isLoading && stores.data?.length === 0 && <p className="rounded-2xl bg-card p-6 text-center text-sm text-muted-foreground">ماكانش محلات في هاد الولاية بعد.</p>}
+    </div>
+  );
+}

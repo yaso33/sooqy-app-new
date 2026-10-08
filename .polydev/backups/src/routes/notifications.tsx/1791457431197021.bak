@@ -1,0 +1,36 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { ArrowRight, Bell } from "lucide-react";
+
+export const Route = createFileRoute("/notifications")({
+  component: NotificationsPage,
+});
+
+function NotificationsPage() {
+  return (
+    <div className="px-4 pt-4">
+      <header className="flex items-center gap-2 py-1">
+        <button
+          onClick={() => window.history.back()}
+          aria-label="رجوع"
+          className="icon-btn"
+        >
+          <ArrowRight className="size-5" />
+        </button>
+        <h1 className="text-h2 text-foreground">الإشعارات</h1>
+      </header>
+
+      <div className="flex flex-col items-center justify-center py-24 text-center">
+        <span className="flex size-20 items-center justify-center rounded-3xl bg-primary-soft">
+          <Bell className="size-9 text-primary" strokeWidth={1.6} />
+        </span>
+        <h2 className="mt-5 text-h3 text-foreground">لا توجد إشعارات بعد</h2>
+        <p className="mt-2 max-w-xs text-body text-muted-foreground">
+          عندما تصلك تحديثات عن طلباتك أو عروض جديدة من المتاجر، ستظهر هنا.
+        </p>
+        <Link to="/" className="btn-small mt-6">
+          تصفح المنتجات
+        </Link>
+      </div>
+    </div>
+  );
+}
