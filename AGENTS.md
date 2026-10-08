@@ -31,3 +31,11 @@
 - الاتصال عبر **pooler eu-west-1**: `aws-0-eu-west-1.pooler.supabase.com:6543` — المضيف المباشر `db.<ref>.supabase.co` يعطي IPv6 فقط ولا يصل إليه هذا البيئة (يجب IPv4؛ السكربت يضبط `setDefaultResultOrder("ipv4first")`).
 - السلات الثلاث (`store-media`, `product-media`, `receipts`) **خاصة** — الكود يعرض الصور عبر روابط موقعة `createSignedUrl`، لا تجعلها عامة.
 - فتح المتجر **اختياري** وتوثيقه **تلقائي**: أي مستخدم مسجّل يستدعي `become_merchant` (فوري وidempotent) ثم ينشئ متجرًا بـ `is_verified = true` — لا موافقة إدارية (هجرة `202610100001_auto_verified_stores.sql`).
+
+## تطبيق الجوال (Capacitor)
+
+- **البناء**: `npm run mobile` (= `node scripts/build-mobile.mjs`): `vite build --config vite.mobile.config.ts` → `dist-mobile` (SPA خالص بدون SSR) ثم `npx cap sync android`. الـ APK يُبنى في CI عبر `.github/workflows/android.yml` (كل push لـ main).
+- **لماذا SPA وليس SSR**: TanStack Start client لا يرسم بدون حمولة `__TSR__` من الخادم — الملفات الثابتة في WebView تترك `#root` فارغًا (شاشة بيضاء). الحل: نقطة دخول منفصلة `src/entry-mobile.tsx` تستخدم `RouterProvider` مباشرة (SPA خالص) مع `vite.mobile.config.ts` (base: './') — لا يمس بناء الويب الرئيسي `vite.config.ts`.
+- **HTML الناتج**: Vite يحافظ على مسار المدخل → `dist-mobile/src/entry-mobile.html`؛ `build-mobile.mjs` ينقله إلى `dist-mobile/index.html` مع تحويل `../assets/` → `assets/`. `capacitor.config.ts` webDir: `dist-mobile`.
+- **معاينة محلية**: `node scripts/serve-static.mjs` (منفذ 4173، يخدم `dist-mobile`) أو `npx vite preview --config vite.mobile.config.ts`. فحص ذاتي: `node scripts/check-mobile.mjs` (يجلب الصفحة والأصول ويتحقق من 200).
+- **مهم**: لا تعدّل `dist-mobile/` يدويًا (متجاهل في git) — عدّل المصدر (`src/entry-mobile.tsx` / `vite.mobile.config.ts`) وأعد `npm run mobile`.
