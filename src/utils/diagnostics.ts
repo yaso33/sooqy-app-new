@@ -261,6 +261,31 @@ export function initDiagnostics() {
     });
   });
 
+  // تسجيل دورة حياة الصفحة — يكشف إعادة تحميل WebView (انهيار/إعادة إنشاء النشاط)
+  window.addEventListener("pagehide", () => {
+    logEvent("warn", "lifecycle.pagehide");
+  });
+
+  window.addEventListener("pageshow", (event) => {
+    logEvent("info", "lifecycle.pageshow", {
+      fromCache: event.persisted,
+    });
+  });
+
+  document.addEventListener("visibilitychange", () => {
+    logEvent("info", "lifecycle.visibility", {
+      state: document.visibilityState,
+    });
+  });
+
+  window.addEventListener("focus", () => {
+    logEvent("info", "lifecycle.windowFocus");
+  });
+
+  window.addEventListener("blur", () => {
+    logEvent("info", "lifecycle.windowBlur");
+  });
+
   window.visualViewport?.addEventListener("resize", () => {
     logEvent("info", "visualViewport.resize", {
       height: window.visualViewport?.height,
