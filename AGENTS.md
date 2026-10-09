@@ -43,11 +43,17 @@
 ## نظام Logs و Error Tracking (جديد)
 
 - **المحلي**: `src/utils/diagnostics.ts` — سجلات في `localStorage["sooqy_diagnostics_v1"]` (آخر 200، حقول حساسة مُرشّحة: password/token/email/phone/message…). يرصد: أخطاء JS، فشل تحميل JS/CSS، unhandledrejection، offline/online، focusin/focusout على الحقول، window.resize، visualViewport.resize، وأحداث كيبورد Capacitor (willShow/didShow/willHide/didHide — **فقط داخل Capacitor** عبر `Capacitor.isNativePlatform()`).
+- **نبضة القلب + longtask**: `startHeartbeat()` يكتب نبضة كل ثانية في `localStorage["sooqy:hb"]`؛ فجوة >2ث = `main.thread.blocked` (تجمّد خيط JS). `startLongTaskObserver()` يسجل المهام >50ms. شاشة التشخيص: `src/diagnostics.tsx` (مدخل إضافي في `vite.mobile.config.ts` → `diagnostics.html` في جذر dist) — تُفتح من التطبيق بـ **5 ضغطات سريعة** (زر 📋) وتقرأ `localStorage["sooqy_diagnostics_v1"]` + `sooqy:hb` + معلومات الجهاز وتسمح بالنسخ.
 - **Sentry**: `src/utils/sentry.ts` — DSN من `VITE_SENTRY_DSN` في `.env.local` (placeholder حاليًا — استبدله بـ DSN حقيقي من sentry.io). `beforeSend` يحذف cookies/headers/data. لا `sendDefaultPii` في v11 (أُزيل).
 - **الربط**: `src/entry-mobile.tsx` يستورد `./utils/sentry` + `initDiagnostics()` + يلفّ التطبيق بـ `AppErrorBoundary` (`src/components/AppErrorBoundary.tsx` = `Sentry.ErrorBoundary` مع fallback عربي).
 - **قراءة السجلات من الهاتف** (WebView عبر adb/remote debugging): `__sooqyLogs()` في console (أو `__sooqyLogs(true)` لإرجاع JSON)، `__sooqyClearLogs()` للمسح.
-- **اختبار التجمّد**: افتح حقول الدخول، افتح/أغلق الكيبورد عدة مرات — لو ظهر `input.focus` دون `keyboard.didShow` فالمشكلة في تكامل الكيبورد؛ لو تكرر `window.resize` فالمشكلة حلقة إعادة رسم.
-- أخطاء TS المهمة: `exactOptionalPropertyTypes` يتطلب `| undefined` صريحًا في الأنواع الاختيارية؛ `import.meta.env.X` عبر index signature يتطلب `["X"]`.
+- **أخطاء TS المهمة**: `exactOptionalPropertyTypes` يتطلب `| undefined` صريحًا في الأنواع الاختيارية؛ `import.meta.env.X` عبر index signature يتطلب `["X"]`.
+
+## تجمّد الكيبورد (تشخيص حي — Realme RMX3890 / Android 15)
+
+- **النتيجة الحاسمة من اللوج**: التجمّد = **انسداد كامل لخيط JS** (فجوة نبضة 11.6 ثانية) يبدأ **لحظة `input.focus`** (قبل أي حدث keyboard) ثم **يُقتل التطبيق ويُعاد تشغيله** (تكرر `diagnostics.started`). لا تصل أحداث `keyboard.willShow/didShow` أبدًا → لوحة المفاتيح لا تكمل الفتح قبل الانسداد.
+- **الإصلاح المطبق**: `android/app/src/main/java/com/sooqy/app/MainActivity.java` — `webView.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO)` (خدمة Autofill في أجهزة OEM تستخرج بنية العرض عند التركيز وتشلّ WebView) + `android:windowSoftInputMode="adjustResize"` + `android:largeHeap="true"` في الـ manifest.
+- **إن عاد التجمّد**: جرّب (أ) كيبورد مختلف (Gboard بدل كيبورد Realme الافتراضي) — يعزل مشكلة IME، (ب) تحديث Android System WebView من Play Store، (ج) جرّب نفس الحساب في متصفح الهاتف — إن عمل فالمشكلة في WebView وليست في البيانات/الصلاحيات.
 
 ## بناء Release (توقيع رقمي)
 
