@@ -92,11 +92,69 @@ export function clearDiagnosticLogs() {
 //   __sooqyLogs()          → طباعة كل السجلات المحفوظة
 //   __sooqyLogs(true)      → إرجاع السجلات كمصفوفة (JSON)
 //   __sooqyClearLogs()     → مسح السجلات
+//   __sooqyDeviceInfo()    → معلومات الجهاز (userAgent، الشاشة...)
 declare global {
   interface Window {
     __sooqyLogs?: (asJson?: boolean) => LogEntry[] | void;
     __sooqyClearLogs?: () => void;
+    __sooqyDeviceInfo?: () => Record<string, unknown>;
   }
+}
+
+// ─── كشف تجمّد خيط JavaScript (نبضة قلب) ────────────────────────
+// كل ثانية نخزّن طابعًا زمنيًا في localStorage (آخر 60 ثانية).
+// - إذا توقفت النبضة (فجوة > 2 ثانية) → خيط JS كان مشغولًا/متجمدًا
+//   (حلقة لا نهائية، إعادة رسم ضخمة، أو ANR) — نُسجّل main.thread.blocked.
+// - إذا استمرت النبضة والشاشة مجمّدة → المشكلة في الرسم
+//   (WebView/GPU/IME) وليست في JavaScript.
+const HB_KEY = "sooqy:hb";
+let lastHeartbeat = 0;
+let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+
+function startHeartbeat() {
+  if (heartbeatTimer || typeof window === "undefined") return;
+  const tick = () => {
+    const now = Date.now();
+    const gap = lastHeartbeat ? now - lastHeartbeat : 0;
+    if (gap > 2000) {
+      logEvent("warn", "main.thread.blocked", { gapMs: gap });
+    }
+    lastHeartbeat = now;
+    try {
+      const arr: number[] = JSON.parse(localStorage.getItem(HB_KEY) || "[]");
+      arr.push(now);
+      localStorage.setItem(HB_KEY, JSON.stringify(arr.slice(-60)));
+    } catch {}
+  };
+  tick();
+  heartbeatTimer = setInterval(tick, 1000);
+}
+
+// المهام الطويلة (>50ms) على الخيط الرئيسي — مصدر التهنيج والتجمّد
+function startLongTaskObserver() {
+  try {
+    if (typeof PerformanceObserver === "undefined") return;
+    const po = new PerformanceObserver((list) => {
+      for (const entry of list.getEntries()) {
+        logEvent("warn", "longtask", {
+          durationMs: Math.round(entry.duration),
+          startMs: Math.round(entry.startTime),
+        });
+      }
+    });
+    po.observe({ entryTypes: ["longtask"] });
+  } catch {}
+}
+
+export function getDeviceInfo() {
+  return {
+    userAgent: navigator.userAgent,
+    screen: `${window.screen.width}x${window.screen.height}`,
+    dpr: window.devicePixelRatio,
+    viewport: `${window.innerWidth}x${window.innerHeight}`,
+    lang: navigator.language,
+    isNative: Capacitor.isNativePlatform(),
+  };
 }
 
 export function exposeDiagnosticsToConsole() {
@@ -117,6 +175,7 @@ export function exposeDiagnosticsToConsole() {
     clearDiagnosticLogs();
     console.info("[SooQy] تم مسح سجلات التشخيص");
   };
+  window.__sooqyDeviceInfo = () => getDeviceInfo();
 }
 
 export function initDiagnostics() {
@@ -209,8 +268,27 @@ export function initDiagnostics() {
     });
   });
 
-  logEvent("info", "diagnostics.started");
+  logEvent("info", "diagnostics.started", getDeviceInfo());
   exposeDiagnosticsToConsole();
+  startHeartbeat();
+  startLongTaskObserver();
+
+  // تسجيل الكتابة (مخفف: مرة كل ثانيتين كحد أقصى — لا نؤثر على الأداء)
+  let lastInputLog = 0;
+  let inputCount = 0;
+  document.addEventListener(
+    "input",
+    () => {
+      inputCount += 1;
+      const now = Date.now();
+      if (now - lastInputLog >= 2000) {
+        logEvent("info", "input.change", { countSinceLast: inputCount });
+        lastInputLog = now;
+        inputCount = 0;
+      }
+    },
+    true,
+  );
 
   // سجّل أحداث لوحة المفاتيح الأصلية عند العمل داخل Capacitor فقط
   // (على الويب لا يوجد تنفيذ أصلي — استدعاؤه يرمي خطأ).

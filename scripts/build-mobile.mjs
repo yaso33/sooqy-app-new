@@ -13,10 +13,15 @@ execSync("npx vite build --config vite.mobile.config.ts", { stdio: "inherit" });
 
 if (!existsSync("dist-mobile/src/entry-mobile.html")) throw new Error("فشل البناء — لا يوجد dist-mobile/src/entry-mobile.html");
 
-console.log("📄 2/3 نقل HTML إلى جذر dist-mobile/index.html...");
-const html = readFileSync("dist-mobile/src/entry-mobile.html", "utf8")
-  .replaceAll("../assets/", "assets/");
-writeFileSync("dist-mobile/index.html", html);
+console.log("📄 2/3 نقل HTML إلى جذر dist-mobile/...");
+const moveHtml = (src, dest) => {
+  if (!existsSync(`dist-mobile/src/${src}`)) return;
+  const html = readFileSync(`dist-mobile/src/${src}`, "utf8")
+    .replaceAll("../assets/", "assets/");
+  writeFileSync(`dist-mobile/${dest}`, html);
+};
+moveHtml("entry-mobile.html", "index.html");
+moveHtml("diagnostics.html", "diagnostics.html");
 
 console.log("📱 3/3 مزامنة Capacitor...");
 execSync("npx cap sync android", { stdio: "inherit" });

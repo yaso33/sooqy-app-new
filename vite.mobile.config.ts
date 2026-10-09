@@ -16,7 +16,10 @@ export default defineConfig({
     outDir: "dist-mobile",
     emptyOutDir: true,
     rollupOptions: {
-      input: { main: fileURLToPath(new URL("./src/entry-mobile.html", import.meta.url)) },
+      input: {
+        main: fileURLToPath(new URL("./src/entry-mobile.html", import.meta.url)),
+        diagnostics: fileURLToPath(new URL("./src/diagnostics.html", import.meta.url)),
+      },
     },
   },
 });
