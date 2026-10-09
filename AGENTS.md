@@ -48,3 +48,10 @@
 - **قراءة السجلات من الهاتف** (WebView عبر adb/remote debugging): `__sooqyLogs()` في console (أو `__sooqyLogs(true)` لإرجاع JSON)، `__sooqyClearLogs()` للمسح.
 - **اختبار التجمّد**: افتح حقول الدخول، افتح/أغلق الكيبورد عدة مرات — لو ظهر `input.focus` دون `keyboard.didShow` فالمشكلة في تكامل الكيبورد؛ لو تكرر `window.resize` فالمشكلة حلقة إعادة رسم.
 - أخطاء TS المهمة: `exactOptionalPropertyTypes` يتطلب `| undefined` صريحًا في الأنواع الاختيارية؛ `import.meta.env.X` عبر index signature يتطلب `["X"]`.
+
+## بناء Release (توقيع رقمي)
+
+- **الـ workflow** (`.github/workflows/android.yml`) يبني `assembleRelease` (موقّع) ويُرفع `app-release.apk`. يشتغل على push إلى main + workflow_dispatch.
+- **التوقيع**: GitHub Secrets — `KEYSTORE_BASE64` (الـ keystore مشفّر base64)، `KEYSTORE_PASSWORD`، `KEY_ALIAS`، `KEY_PASSWORD`. `android/app/build.gradle` يقرأها من env فقط (لا كلمات مرور في الملف).
+- **النسخة المحلية**: `android/keystore/sooqy-release.jks` + `README-credentials.txt` (متجاهلان في git — لا ترفعهما أبدًا). للبناء المحلي: `KEYSTORE_BASE64=$(base64 -w0 android/keystore/sooqy-release.jks) KEYSTORE_PASSWORD=... KEY_ALIAS=sooqy KEY_PASSWORD=... ./gradlew assembleRelease`.
+- **مهم**: احتفظ بنسخة من الـ keystore خارج المشروع — بدونه لا يمكن تحديث التطبيق بنفس التوقيع مستقبلًا.
