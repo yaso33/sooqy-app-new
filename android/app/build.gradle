@@ -16,10 +16,30 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            // التوقيع يُقرأ حصريًا من متغيرات البيئة (GitHub Secrets في CI،
+            // أو env عند البناء المحلي) — لا كلمات مرور في الملف أبدًا.
+            def keystoreBase64 = System.getenv("KEYSTORE_BASE64")
+            if (keystoreBase64 != null && !keystoreBase64.isEmpty()) {
+                def keystoreFile = file("${rootProject.projectDir}/keystore/release.jks")
+                keystoreFile.parentFile.mkdirs()
+                keystoreFile.bytes = keystoreBase64.decodeBase64()
+                storeFile keystoreFile
+                storePassword System.getenv("KEYSTORE_PASSWORD")
+                keyAlias System.getenv("KEY_ALIAS")
+                keyPassword System.getenv("KEY_PASSWORD")
+            }
+            // بدون KEYSTORE_BASE64: لا يُطبَّق هذا signingConfig (يبني debug تلقائيًا)
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (System.getenv("KEYSTORE_BASE64") != null && !System.getenv("KEYSTORE_BASE64").isEmpty()) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }

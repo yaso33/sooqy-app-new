@@ -1,9 +1,0 @@
-# App
-VITE_SUPABASE_URL=https://your-project-ref.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=your-anon-key
-SUPABASE_URL=https://your-project-ref.supabase.co
-SUPABASE_PUBLISHABLE_KEY=your-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-
-# Optional extras for later phases
-VITE_GOOGLE_MAPS_API_KEY=your-google-maps-key

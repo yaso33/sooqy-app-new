@@ -39,3 +39,12 @@
 - **HTML الناتج**: Vite يحافظ على مسار المدخل → `dist-mobile/src/entry-mobile.html`؛ `build-mobile.mjs` ينقله إلى `dist-mobile/index.html` مع تحويل `../assets/` → `assets/`. `capacitor.config.ts` webDir: `dist-mobile`.
 - **معاينة محلية**: `node scripts/serve-static.mjs` (منفذ 4173، يخدم `dist-mobile`) أو `npx vite preview --config vite.mobile.config.ts`. فحص ذاتي: `node scripts/check-mobile.mjs` (يجلب الصفحة والأصول ويتحقق من 200).
 - **مهم**: لا تعدّل `dist-mobile/` يدويًا (متجاهل في git) — عدّل المصدر (`src/entry-mobile.tsx` / `vite.mobile.config.ts`) وأعد `npm run mobile`.
+
+## نظام Logs و Error Tracking (جديد)
+
+- **المحلي**: `src/utils/diagnostics.ts` — سجلات في `localStorage["sooqy_diagnostics_v1"]` (آخر 200، حقول حساسة مُرشّحة: password/token/email/phone/message…). يرصد: أخطاء JS، فشل تحميل JS/CSS، unhandledrejection، offline/online، focusin/focusout على الحقول، window.resize، visualViewport.resize، وأحداث كيبورد Capacitor (willShow/didShow/willHide/didHide — **فقط داخل Capacitor** عبر `Capacitor.isNativePlatform()`).
+- **Sentry**: `src/utils/sentry.ts` — DSN من `VITE_SENTRY_DSN` في `.env.local` (placeholder حاليًا — استبدله بـ DSN حقيقي من sentry.io). `beforeSend` يحذف cookies/headers/data. لا `sendDefaultPii` في v11 (أُزيل).
+- **الربط**: `src/entry-mobile.tsx` يستورد `./utils/sentry` + `initDiagnostics()` + يلفّ التطبيق بـ `AppErrorBoundary` (`src/components/AppErrorBoundary.tsx` = `Sentry.ErrorBoundary` مع fallback عربي).
+- **قراءة السجلات من الهاتف** (WebView عبر adb/remote debugging): `__sooqyLogs()` في console (أو `__sooqyLogs(true)` لإرجاع JSON)، `__sooqyClearLogs()` للمسح.
+- **اختبار التجمّد**: افتح حقول الدخول، افتح/أغلق الكيبورد عدة مرات — لو ظهر `input.focus` دون `keyboard.didShow` فالمشكلة في تكامل الكيبورد؛ لو تكرر `window.resize` فالمشكلة حلقة إعادة رسم.
+- أخطاء TS المهمة: `exactOptionalPropertyTypes` يتطلب `| undefined` صريحًا في الأنواع الاختيارية؛ `import.meta.env.X` عبر index signature يتطلب `["X"]`.

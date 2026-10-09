@@ -1,7 +1,0 @@
-{
-  "templateId": "empty",
-  "ai": {
-    "provider": "builtin_default",
-    "model": ""
-  }
-}

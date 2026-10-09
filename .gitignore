@@ -35,3 +35,12 @@ dist-ssr
 .env
 .env.*
 !.env.example
+
+# Local tooling / SDK copies
+.polydev/
+opt/
+android/local.properties
+android/.gradle/
+android/app/build/
+android/build/
+android/keystore/

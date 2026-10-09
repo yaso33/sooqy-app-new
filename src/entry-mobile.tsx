@@ -14,11 +14,20 @@ import "@fontsource/tajawal/700.css";
 import "@fontsource/tajawal/800.css";
 import "./styles.css";
 
+// نظام السجلات المحلية و Error Tracking (Sentry)
+import "./utils/sentry";
+import { initDiagnostics } from "./utils/diagnostics";
+import { AppErrorBoundary, ErrorFallback } from "./components/AppErrorBoundary";
+
+initDiagnostics();
+
 const router = getRouter();
 const queryClient = router.options.context.queryClient;
 
 createRoot(document.getElementById("root")!).render(
-  <QueryClientProvider client={queryClient}>
-    <RouterProvider router={router} />
-  </QueryClientProvider>,
+  <AppErrorBoundary fallback={<ErrorFallback />}>
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>
+  </AppErrorBoundary>,
 );
