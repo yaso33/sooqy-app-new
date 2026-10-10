@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { SPLASH_IMAGE } from "./intro-assets";
 
 /**
  * شاشة البداية — تظهر لحظيًا عند كل تشغيل ثم تختفي بسلاسة.
- * واجهة فقط، بلا أي بيانات.
+ * تعرض صورة `SPLASH_IMAGE` (من public/intro/)؛ لو كانت مفقودة
+ * يظهر تصميم هوية Indigo افتراضي حتى تُرفع الصورة.
  */
 export function Splash() {
   const [phase, setPhase] = useState<"show" | "hide" | "gone">("show");
+  const [imgFailed, setImgFailed] = useState(false);
 
   useEffect(() => {
     const t1 = setTimeout(() => setPhase("hide"), 1500);
@@ -16,6 +19,17 @@ export function Splash() {
       clearTimeout(t2);
     };
   }, []);
+
+  // منع التمرير أثناء ظهور الشاشة
+  useEffect(() => {
+    if (phase !== "gone") {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = prev;
+      };
+    }
+  }, [phase]);
 
   if (phase === "gone") return null;
 
@@ -27,11 +41,21 @@ export function Splash() {
         phase === "hide" && "pointer-events-none opacity-0",
       )}
     >
-      <img
-        src="/splash.png"
-        alt="SooQy"
-        className="h-full w-full object-cover animate-scale-in"
-      />
+      {imgFailed ? (
+        <div className="flex h-full w-full flex-col items-center justify-center gap-4 bg-gradient-to-b from-primary-soft via-background to-background animate-scale-in">
+          <span className="text-5xl font-extrabold tracking-tight text-primary">SooQy</span>
+          <span className="text-sm font-semibold text-muted-foreground">
+            شاهد السلعة قبل الخروج
+          </span>
+        </div>
+      ) : (
+        <img
+          src={SPLASH_IMAGE}
+          alt="SooQy"
+          onError={() => setImgFailed(true)}
+          className="h-full w-full object-cover animate-scale-in"
+        />
+      )}
     </div>
   );
 }

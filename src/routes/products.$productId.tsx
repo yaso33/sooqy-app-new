@@ -13,11 +13,12 @@ import {
   Zap,
 } from "lucide-react";
 import { toast } from "sonner";
-import { formatDA, formatKm, directionsUrl, useGeo, isOpenNow } from "@/lib/geo";
+import { formatDA, formatKm, useGeo, isOpenNow } from "@/lib/geo";
 import {
   createReservation,
   getProduct,
   getProductComparisonOffers,
+  incrementProductView,
   primaryImage,
   searchProducts,
   stockLevel,
@@ -35,6 +36,7 @@ import { FavoriteButton, ProductCard } from "@/components/sooqy/cards";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useCountdown } from "@/components/sooqy/DynamicIsland";
 import { ReviewSection } from "@/components/sooqy/ReviewSection";
+import { DirectionsButton } from "@/components/sooqy/DirectionsButton";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { ar } from "date-fns/locale";
@@ -103,6 +105,7 @@ function ProductPage() {
 
   useEffect(() => {
     track("view_product", { productId });
+    incrementProductView(productId).catch(() => {});
   }, [productId]);
   useEffect(() => {
     setSize(opts.sizes?.[0] ?? "");
@@ -185,10 +188,7 @@ function ProductPage() {
   return (
     <div className="pb-6">
       <div className="relative bg-neutral-100 dark:bg-neutral-800">
-        <Carousel
-          slideClassName="basis-full"
-          onIndexChange={setImgIdx}
-        >
+        <Carousel slideClassName="basis-full" onIndexChange={setImgIdx}>
           {(images.length ? images : [null]).map((src, i) =>
             src ? (
               <button
@@ -197,10 +197,19 @@ function ProductPage() {
                 aria-label={`تكبير صورة ${i + 1}`}
                 className="block w-full"
               >
-                <img src={src} alt={`${p.name} — صورة ${i + 1}`} loading="lazy" decoding="async" className="aspect-square w-full object-cover" />
+                <img
+                  src={src}
+                  alt={`${p.name} — صورة ${i + 1}`}
+                  loading="lazy"
+                  decoding="async"
+                  className="aspect-square w-full object-cover"
+                />
               </button>
             ) : (
-              <div key="none" className="flex aspect-square w-full items-center justify-center text-6xl">
+              <div
+                key="none"
+                className="flex aspect-square w-full items-center justify-center text-6xl"
+              >
                 🛍️
               </div>
             ),
@@ -269,10 +278,12 @@ function ProductPage() {
           {selected && (
             <p className="text-[11px] text-muted-foreground">
               آخر تأكيد للمخزون:{" "}
-              {formatDistanceToNow(new Date(selected.last_confirmed_at), {
-                addSuffix: true,
-                locale: ar,
-              })}{" "}
+              {selected.last_confirmed_at
+                ? formatDistanceToNow(new Date(selected.last_confirmed_at), {
+                    addSuffix: true,
+                    locale: ar,
+                  })
+                : "لم يُؤكَّد بعد"}{" "}
               · {selected.store.name}
             </p>
           )}
@@ -290,7 +301,11 @@ function ProductPage() {
 
         <div className="flex items-center gap-3">
           <span className="text-sm font-semibold">الكمية</span>
-          <QtyStepper value={qty} onChange={setQty} max={Math.min(selected?.stock_quantity ?? 10, 10)} />
+          <QtyStepper
+            value={qty}
+            onChange={setQty}
+            max={Math.min(selected?.stock_quantity ?? 10, 10)}
+          />
         </div>
 
         <div className="grid grid-cols-2 gap-2">
@@ -364,14 +379,14 @@ function ProductPage() {
                   >
                     <MessageCircle className="size-3.5" /> واتساب
                   </a>
-                  <a
-                    href={directionsUrl(o.store.latitude, o.store.longitude, o.store.name)}
-                    target="_blank"
-                    rel="noreferrer"
+                  <DirectionsButton
+                    lat={o.store.latitude}
+                    lng={o.store.longitude}
+                    label={o.store.name}
                     className="flex items-center justify-center gap-1 rounded-xl bg-ink py-2 text-xs font-semibold text-ink-foreground"
                   >
                     <Navigation className="size-3.5" /> الاتجاهات
-                  </a>
+                  </DirectionsButton>
                 </div>
               </div>
             );
@@ -401,7 +416,9 @@ function ProductPage() {
               <p className="text-[11px] text-muted-foreground">الإجمالي</p>
               <p className="text-lg font-bold text-primary">
                 {formatDA(selected.price * qty)}
-                {qty > 1 && <span className="text-xs font-medium text-muted-foreground"> × {qty}</span>}
+                {qty > 1 && (
+                  <span className="text-xs font-medium text-muted-foreground"> × {qty}</span>
+                )}
               </p>
             </div>
             <button

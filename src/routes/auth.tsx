@@ -167,8 +167,9 @@ function AuthPage() {
         </button>
       )}
 
-      <p className="text-center text-[11px] text-muted-foreground">
-        بالمتابعة فإنك توافق على <Link to="/terms" className="underline">شروط الاستخدام</Link>
+      <p className="text-center text-[11px] leading-relaxed text-muted-foreground">
+        بالمتابعة فإنك توافق على <Link to="/terms" className="underline">شروط الاستخدام</Link>{" "}
+        و<Link to="/privacy" className="underline">سياسة الخصوصية</Link>
       </p>
     </div>
   );

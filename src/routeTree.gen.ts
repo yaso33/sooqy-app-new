@@ -19,15 +19,19 @@ import { Route as FavoritesRouteImport } from './routes/favorites'
 import { Route as HelpRouteImport } from './routes/help'
 import { Route as MapRouteImport } from './routes/map'
 import { Route as NotificationsRouteImport } from './routes/notifications'
-import { Route as OrdersRouteImport } from './routes/orders'
-import { Route as StudioRouteImport } from './routes/studio'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as AuthCallbackRouteImport } from './routes/auth_.callback'
 import { Route as CategoryCatIdRouteImport } from './routes/category.$catId'
+import { Route as OrdersIndexRouteImport } from './routes/orders.index'
 import { Route as OrdersOrderIdRouteImport } from './routes/orders.$orderId'
 import { Route as ProductsProductIdRouteImport } from './routes/products.$productId'
 import { Route as StoresIndexRouteImport } from './routes/stores.index'
 import { Route as StoresStoreIdRouteImport } from './routes/stores.$storeId'
+import { Route as StudioIndexRouteImport } from './routes/studio.index'
+import { Route as StudioSettingsRouteImport } from './routes/studio.settings'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -79,14 +83,19 @@ const NotificationsRoute = NotificationsRouteImport.update({
   path: '/notifications',
   getParentRoute: () => rootRouteImport,
 } as any)
-const OrdersRoute = OrdersRouteImport.update({
-  id: '/orders',
-  path: '/orders',
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
-const StudioRoute = StudioRouteImport.update({
-  id: '/studio',
-  path: '/studio',
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TermsRoute = TermsRouteImport.update({
@@ -104,10 +113,15 @@ const CategoryCatIdRoute = CategoryCatIdRouteImport.update({
   path: '/category/$catId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OrdersIndexRoute = OrdersIndexRouteImport.update({
+  id: '/orders/',
+  path: '/orders/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OrdersOrderIdRoute = OrdersOrderIdRouteImport.update({
-  id: '/$orderId',
-  path: '/$orderId',
-  getParentRoute: () => OrdersRoute,
+  id: '/orders/$orderId',
+  path: '/orders/$orderId',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ProductsProductIdRoute = ProductsProductIdRouteImport.update({
   id: '/products/$productId',
@@ -124,6 +138,16 @@ const StoresStoreIdRoute = StoresStoreIdRouteImport.update({
   path: '/stores/$storeId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StudioIndexRoute = StudioIndexRouteImport.update({
+  id: '/studio/',
+  path: '/studio/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StudioSettingsRoute = StudioSettingsRouteImport.update({
+  id: '/studio/settings',
+  path: '/studio/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -136,15 +160,19 @@ export interface FileRoutesByFullPath {
   '/help': typeof HelpRoute
   '/map': typeof MapRoute
   '/notifications': typeof NotificationsRoute
-  '/orders': typeof OrdersRouteWithChildren
-  '/studio': typeof StudioRoute
+  '/privacy': typeof PrivacyRoute
+  '/profile': typeof ProfileRoute
+  '/settings': typeof SettingsRoute
   '/terms': typeof TermsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/category/$catId': typeof CategoryCatIdRoute
   '/orders/$orderId': typeof OrdersOrderIdRoute
   '/products/$productId': typeof ProductsProductIdRoute
   '/stores/$storeId': typeof StoresStoreIdRoute
+  '/studio/settings': typeof StudioSettingsRoute
+  '/orders/': typeof OrdersIndexRoute
   '/stores/': typeof StoresIndexRoute
+  '/studio/': typeof StudioIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -157,15 +185,19 @@ export interface FileRoutesByTo {
   '/help': typeof HelpRoute
   '/map': typeof MapRoute
   '/notifications': typeof NotificationsRoute
-  '/orders': typeof OrdersRouteWithChildren
-  '/studio': typeof StudioRoute
+  '/privacy': typeof PrivacyRoute
+  '/profile': typeof ProfileRoute
+  '/settings': typeof SettingsRoute
   '/terms': typeof TermsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/category/$catId': typeof CategoryCatIdRoute
   '/orders/$orderId': typeof OrdersOrderIdRoute
   '/products/$productId': typeof ProductsProductIdRoute
   '/stores/$storeId': typeof StoresStoreIdRoute
+  '/studio/settings': typeof StudioSettingsRoute
+  '/orders': typeof OrdersIndexRoute
   '/stores': typeof StoresIndexRoute
+  '/studio': typeof StudioIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -179,15 +211,19 @@ export interface FileRoutesById {
   '/help': typeof HelpRoute
   '/map': typeof MapRoute
   '/notifications': typeof NotificationsRoute
-  '/orders': typeof OrdersRouteWithChildren
-  '/studio': typeof StudioRoute
+  '/privacy': typeof PrivacyRoute
+  '/profile': typeof ProfileRoute
+  '/settings': typeof SettingsRoute
   '/terms': typeof TermsRoute
   '/auth_/callback': typeof AuthCallbackRoute
   '/category/$catId': typeof CategoryCatIdRoute
   '/orders/$orderId': typeof OrdersOrderIdRoute
   '/products/$productId': typeof ProductsProductIdRoute
   '/stores/$storeId': typeof StoresStoreIdRoute
+  '/studio/settings': typeof StudioSettingsRoute
+  '/orders/': typeof OrdersIndexRoute
   '/stores/': typeof StoresIndexRoute
+  '/studio/': typeof StudioIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -202,15 +238,19 @@ export interface FileRouteTypes {
     | '/help'
     | '/map'
     | '/notifications'
-    | '/orders'
-    | '/studio'
+    | '/privacy'
+    | '/profile'
+    | '/settings'
     | '/terms'
     | '/auth/callback'
     | '/category/$catId'
     | '/orders/$orderId'
     | '/products/$productId'
     | '/stores/$storeId'
+    | '/studio/settings'
+    | '/orders/'
     | '/stores/'
+    | '/studio/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -223,15 +263,19 @@ export interface FileRouteTypes {
     | '/help'
     | '/map'
     | '/notifications'
-    | '/orders'
-    | '/studio'
+    | '/privacy'
+    | '/profile'
+    | '/settings'
     | '/terms'
     | '/auth/callback'
     | '/category/$catId'
     | '/orders/$orderId'
     | '/products/$productId'
     | '/stores/$storeId'
+    | '/studio/settings'
+    | '/orders'
     | '/stores'
+    | '/studio'
   id:
     | '__root__'
     | '/'
@@ -244,15 +288,19 @@ export interface FileRouteTypes {
     | '/help'
     | '/map'
     | '/notifications'
-    | '/orders'
-    | '/studio'
+    | '/privacy'
+    | '/profile'
+    | '/settings'
     | '/terms'
     | '/auth_/callback'
     | '/category/$catId'
     | '/orders/$orderId'
     | '/products/$productId'
     | '/stores/$storeId'
+    | '/studio/settings'
+    | '/orders/'
     | '/stores/'
+    | '/studio/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -266,14 +314,19 @@ export interface RootRouteChildren {
   HelpRoute: typeof HelpRoute
   MapRoute: typeof MapRoute
   NotificationsRoute: typeof NotificationsRoute
-  OrdersRoute: typeof OrdersRouteWithChildren
-  StudioRoute: typeof StudioRoute
+  PrivacyRoute: typeof PrivacyRoute
+  ProfileRoute: typeof ProfileRoute
+  SettingsRoute: typeof SettingsRoute
   TermsRoute: typeof TermsRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   CategoryCatIdRoute: typeof CategoryCatIdRoute
+  OrdersOrderIdRoute: typeof OrdersOrderIdRoute
   ProductsProductIdRoute: typeof ProductsProductIdRoute
   StoresStoreIdRoute: typeof StoresStoreIdRoute
+  StudioSettingsRoute: typeof StudioSettingsRoute
+  OrdersIndexRoute: typeof OrdersIndexRoute
   StoresIndexRoute: typeof StoresIndexRoute
+  StudioIndexRoute: typeof StudioIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -348,18 +401,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NotificationsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/orders': {
-      id: '/orders'
-      path: '/orders'
-      fullPath: '/orders'
-      preLoaderRoute: typeof OrdersRouteImport
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/studio': {
-      id: '/studio'
-      path: '/studio'
-      fullPath: '/studio'
-      preLoaderRoute: typeof StudioRouteImport
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/terms': {
@@ -383,12 +443,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CategoryCatIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/orders/': {
+      id: '/orders/'
+      path: '/orders'
+      fullPath: '/orders/'
+      preLoaderRoute: typeof OrdersIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/orders/$orderId': {
       id: '/orders/$orderId'
-      path: '/$orderId'
+      path: '/orders/$orderId'
       fullPath: '/orders/$orderId'
       preLoaderRoute: typeof OrdersOrderIdRouteImport
-      parentRoute: typeof OrdersRoute
+      parentRoute: typeof rootRouteImport
     }
     '/products/$productId': {
       id: '/products/$productId'
@@ -411,19 +478,22 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StoresStoreIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/studio/': {
+      id: '/studio/'
+      path: '/studio'
+      fullPath: '/studio/'
+      preLoaderRoute: typeof StudioIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/studio/settings': {
+      id: '/studio/settings'
+      path: '/studio/settings'
+      fullPath: '/studio/settings'
+      preLoaderRoute: typeof StudioSettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
-
-interface OrdersRouteChildren {
-  OrdersOrderIdRoute: typeof OrdersOrderIdRoute
-}
-
-const OrdersRouteChildren: OrdersRouteChildren = {
-  OrdersOrderIdRoute: OrdersOrderIdRoute,
-}
-
-const OrdersRouteWithChildren =
-  OrdersRoute._addFileChildren(OrdersRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -436,14 +506,19 @@ const rootRouteChildren: RootRouteChildren = {
   HelpRoute: HelpRoute,
   MapRoute: MapRoute,
   NotificationsRoute: NotificationsRoute,
-  OrdersRoute: OrdersRouteWithChildren,
-  StudioRoute: StudioRoute,
+  PrivacyRoute: PrivacyRoute,
+  ProfileRoute: ProfileRoute,
+  SettingsRoute: SettingsRoute,
   TermsRoute: TermsRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   CategoryCatIdRoute: CategoryCatIdRoute,
+  OrdersOrderIdRoute: OrdersOrderIdRoute,
   ProductsProductIdRoute: ProductsProductIdRoute,
   StoresStoreIdRoute: StoresStoreIdRoute,
+  StudioSettingsRoute: StudioSettingsRoute,
+  OrdersIndexRoute: OrdersIndexRoute,
   StoresIndexRoute: StoresIndexRoute,
+  StudioIndexRoute: StudioIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

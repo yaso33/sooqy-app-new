@@ -99,6 +99,114 @@ export async function fetchWilayas(): Promise<Wilaya[]> {
   return data;
 }
 
+/** Fetch unique communes for a wilaya (from stores table). */
+export async function fetchCommunes(wilayaId: number | null): Promise<string[]> {
+  if (!wilayaId) return [];
+  const { data, error } = await supabase
+    .from("stores")
+    .select("commune")
+    .eq("wilaya_id", wilayaId)
+    .not("commune", "is", null);
+  if (error) throw error;
+  const unique = [...new Set(data.map((s) => s.commune).filter(Boolean))].sort();
+  return unique;
+}
+
+/** Fetch recent store offers (for homepage promotions). */
+export async function fetchHomepageOffers(
+  opts: { wilayaId: number | null; limit?: number; offset?: number } = { wilayaId: null },
+): Promise<OfferFull[]> {
+  const { wilayaId, limit = 8, offset = 0 } = opts;
+  let q = supabase.from("store_offers").select(OFFER_SELECT);
+  if (wilayaId) q = q.eq("store.wilaya_id", wilayaId);
+  const { data, error } = await q
+    .eq("is_available", true)
+    .gt("stock_quantity", 0)
+    .order("created_at", { ascending: false })
+    .range(offset, offset + limit - 1);
+  if (error) throw error;
+  return data as unknown as OfferFull[];
+}
+
+/** Fetch suggested stores (high rating, verified, etc.) for homepage. */
+export async function fetchSuggestedStores(
+  opts: {
+    wilayaId: number | null;
+    lat?: number | null;
+    lng?: number | null;
+    limit?: number;
+    offset?: number;
+  } = { wilayaId: null },
+): Promise<Store[]> {
+  const { wilayaId, lat, lng, limit = 6, offset = 0 } = opts;
+  let q = supabase.from("stores").select("*");
+  if (wilayaId) q = q.eq("wilaya_id", wilayaId);
+  const { data, error } = await q
+    .eq("is_verified", true)
+    .order("rating", { ascending: false })
+    .range(offset, offset + limit * 2 - 1);
+  if (error) throw error;
+  const pos = lat != null && lng != null ? { lat, lng } : null;
+  return data
+    .map((s) => ({ ...s, distance: storeDistance(s, pos), open: isOpenNow(s.opening_hours) }))
+    .sort((a, b) => (a.distance ?? 1e9) - (b.distance ?? 1e9))
+    .slice(0, limit);
+}
+
+/** Increment product view count (fire-and-forget). */
+export async function incrementProductView(productId: string): Promise<void> {
+  // RPC موجود في الهجرات (202610120001) — لا مسار احتياطي بـ supabase.raw (غير موجودة في supabase-js v2)
+  await supabase.rpc("increment_product_view", { product_id: productId });
+}
+
+/** Fetch most viewed products for homepage. */
+export async function fetchMostViewedProducts(
+  opts: { limit?: number; offset?: number } = {},
+): Promise<Product[]> {
+  const { limit = 10, offset = 0 } = opts;
+  // 1) المسار الأساسي: RPC (يتطلب هجرة 202610120001_product_views.sql —
+  //    نفس الهجرة تُنشئ الدالة وعمود view_count معًا، فلا حاجة لمسار وسيط)
+  const { data: rpcData, error: rpcError } = await supabase.rpc("get_most_viewed_products", {
+    limit_count: limit,
+    offset_count: offset,
+  });
+  if (!rpcError && rpcData) {
+    return rpcData as unknown as Product[];
+  }
+  // 2) الهجرة غير مطبّقة على هذه القاعدة (404) — نعرض أحدث المنتجات
+  //    بدلًا من كسر قسم الصفحة الرئيسية؛ يعود الترتيب الصحيح تلقائيًا عند التطبيق.
+  const { data: newest, error: nErr } = await supabase
+    .from("products")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .range(offset, offset + limit - 1);
+  if (nErr) throw nErr;
+  return newest as unknown as Product[];
+}
+
+/** Most-viewed products as real ProductGroups (with their live offers) for the homepage. */
+export async function fetchMostViewedGroups(
+  opts: { limit?: number; offset?: number } = {},
+): Promise<ProductGroup[]> {
+  const products = await fetchMostViewedProducts(opts);
+  const ids = products.map((p) => p.id);
+  if (!ids.length) return [];
+  const { data, error } = await supabase
+    .from("store_offers")
+    .select(OFFER_SELECT)
+    .in("product_id", ids);
+  if (error) throw error;
+  const groups = groupOffers(data as unknown as OfferFull[], null);
+  const byId = new Map(groups.map((g) => [g.product.id, g]));
+  // حافظ على ترتيب "الأكثر مشاهدة" من RPC
+  const ordered: ProductGroup[] = [];
+  for (const id of ids) {
+    const g = byId.get(id);
+    if (g) ordered.push(g);
+  }
+  return ordered;
+}
+
 export async function fetchNearStores(
   wilayaId: number | null,
   lat?: number | null,
@@ -129,12 +237,15 @@ export async function searchProducts(opts: {
   offset?: number;
   minPrice?: number;
   maxPrice?: number;
+  radius?: number | null; // km
+  commune?: string | null;
 }): Promise<ProductGroup[]> {
   let q = supabase.from("store_offers").select(OFFER_SELECT);
   const term = opts.query?.trim().replace(/[%,()]/g, " ");
   if (term) q = q.or(`name.ilike.%${term}%,brand.ilike.%${term}%`, { referencedTable: "products" });
   if (opts.category) q = q.eq("product.category", opts.category);
   if (opts.wilaya) q = q.eq("store.wilaya_id", opts.wilaya);
+  if (opts.commune) q = q.ilike("store.commune", opts.commune);
   if (opts.inStockOnly) q = q.eq("is_available", true).gt("stock_quantity", 0);
   if (opts.minPrice != null) q = q.gte("price", opts.minPrice);
   if (opts.maxPrice != null) q = q.lte("price", opts.maxPrice);
@@ -142,7 +253,11 @@ export async function searchProducts(opts: {
     .order("created_at", { ascending: false })
     .range(opts.offset ?? 0, (opts.offset ?? 0) + (opts.limit ?? 300) - 1);
   if (error) throw error;
-  const groups = groupOffers(data as unknown as OfferFull[], opts.pos ?? null);
+  let groups = groupOffers(data as unknown as OfferFull[], opts.pos ?? null);
+  // Filter by radius if provided and user position exists
+  if (opts.radius != null && opts.pos != null) {
+    groups = groups.filter((g) => g.nearestKm != null && g.nearestKm <= opts.radius!);
+  }
   const sort = opts.sortBy ?? "newest";
   if (sort === "cheapest") groups.sort((a, b) => a.minPrice - b.minPrice);
   if (sort === "nearest") groups.sort((a, b) => (a.nearestKm ?? 1e9) - (b.nearestKm ?? 1e9));
@@ -155,14 +270,48 @@ export async function searchProducts(opts: {
   return groups;
 }
 
-export async function searchStores(query: string, wilaya: number | null) {
+export async function searchStores(
+  opts: {
+    query?: string;
+    wilaya?: number | null;
+    commune?: string | null;
+    openOnly?: boolean;
+    verifiedOnly?: boolean;
+    minRating?: number;
+    sortBy?: "nearest" | "rating" | "name" | "newest";
+    lat?: number | null;
+    lng?: number | null;
+    limit?: number;
+    offset?: number;
+  } = {},
+): Promise<Store[]> {
   let q = supabase.from("stores").select("*");
-  const term = query.trim().replace(/[%,()]/g, " ");
+  const term = opts.query?.trim().replace(/[%,()]/g, " ");
   if (term) q = q.or(`name.ilike.%${term}%,commune.ilike.%${term}%,description.ilike.%${term}%`);
-  if (wilaya) q = q.eq("wilaya_id", wilaya);
-  const { data, error } = await q.limit(100);
+  if (opts.wilaya) q = q.eq("wilaya_id", opts.wilaya);
+  if (opts.commune) q = q.ilike("commune", opts.commune);
+  if (opts.verifiedOnly) q = q.eq("is_verified", true);
+  if (opts.minRating != null) q = q.gte("rating", opts.minRating);
+  const { data, error } = await q
+    .order("created_at", { ascending: false })
+    .range(opts.offset ?? 0, (opts.offset ?? 0) + (opts.limit ?? 50) - 1);
   if (error) throw error;
-  return data;
+  let stores = data as Store[];
+  const pos = opts.lat != null && opts.lng != null ? { lat: opts.lat, lng: opts.lng } : null;
+  stores = stores.map((s) => ({
+    ...s,
+    distance: storeDistance(s, pos),
+    open: isOpenNow(s.opening_hours),
+  }));
+  // فلتر "مفتوح الآن" يُحسب عميلًا — لا يوجد عمود is_open_now في الجدول
+  if (opts.openOnly) stores = stores.filter((s) => s.open);
+  const sort = opts.sortBy ?? "nearest";
+  if (sort === "nearest") stores.sort((a, b) => (a.distance ?? 1e9) - (b.distance ?? 1e9));
+  if (sort === "rating") stores.sort((a, b) => Number(b.rating) - Number(a.rating));
+  if (sort === "name") stores.sort((a, b) => a.name.localeCompare(b.name, "ar"));
+  if (sort === "newest")
+    stores.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  return stores;
 }
 
 export async function getProduct(productId: string) {
@@ -236,18 +385,32 @@ export async function submitReview(
   rating: number,
   comment?: string,
 ) {
-  const { data, error } = await supabase
-    .from("reviews")
-    .insert({
-      target_type: targetType,
-      target_id: targetId,
-      rating,
-      comment: comment?.trim() || null,
-    })
-    .select()
-    .single();
-  if (error) throw new Error(friendlyError(error));
-  return data as unknown as Review;
+  // المراجعات الموثّقة: عبر دالة RPC تتحقق من طلب مُسلَّم أو حجز مُستلَم
+  // (هجرة 202610140001). إن كانت القاعدة غير مهاجَرة (الدالة غير موجودة)
+  // نرجع للإدراج المباشر القديم حتى لا تنكسر الميزة.
+  const { data, error } = await supabase.rpc("submit_review", {
+    _target_type: targetType,
+    _target_id: targetId,
+    _rating: rating,
+    _comment: comment?.trim() || null,
+  });
+  if (!error) return data as unknown as Review;
+  const msg = String(error.message ?? "");
+  if (msg.includes("PGRST202") || msg.includes("Could not find the function")) {
+    const { data: direct, error: dErr } = await supabase
+      .from("reviews")
+      .insert({
+        target_type: targetType,
+        target_id: targetId,
+        rating,
+        comment: comment?.trim() || null,
+      })
+      .select()
+      .single();
+    if (dErr) throw new Error(friendlyError(dErr));
+    return direct as unknown as Review;
+  }
+  throw new Error(friendlyError(error));
 }
 
 export async function getOffersByIds(ids: string[]): Promise<OfferFull[]> {
@@ -273,6 +436,8 @@ const ERRORS: Record<string, string> = {
   reservation_cancelled: "هذا الحجز ملغى",
   not_cancellable: "لا يمكن إلغاء هذا الحجز",
   forbidden: "غير مسموح",
+  review_not_verified: "لا يمكنك التقييم إلا بعد استلام طلب أو حجز مؤكد",
+  invalid_rating: "التقييم يجب أن يكون بين 1 و 5 نجوم",
 };
 export function friendlyError(e: unknown) {
   const msg = (e as { message?: string })?.message ?? String(e);
@@ -370,6 +535,27 @@ export async function uploadImageToBucket(
     .createSignedUrl(path, ttl);
   if (sErr) throw sErr;
   return signed.signedUrl;
+}
+
+// ---------- Schema support (تخصيص إضافي) ----------
+// أعمدة جديدة (روابط التواصل، صورة الملف الشخصي) تحتاج هجرة
+// supabase/migrations/202610130001_store_socials_avatar.sql.
+// نفحص وجودها مرة واحدة لكل جلسة ونتكيف تلقائيًا مع القواعد غير المهاجَرة.
+
+let schemaSupport: Promise<{ storeSocials: boolean; avatar: boolean }> | null = null;
+
+export function fetchSchemaSupport() {
+  if (!schemaSupport) {
+    schemaSupport = (async () => {
+      const [insta, fb, av] = await Promise.all([
+        supabase.from("stores").select("instagram_url").limit(1),
+        supabase.from("stores").select("facebook_url").limit(1),
+        supabase.from("profiles").select("avatar_url").limit(1),
+      ]);
+      return { storeSocials: !insta.error && !fb.error, avatar: !av.error };
+    })().catch(() => ({ storeSocials: false, avatar: false }));
+  }
+  return schemaSupport;
 }
 
 export type BagItem = { offerId: string; quantity: number; options: Record<string, string> };
@@ -564,6 +750,40 @@ export async function merchantQuickAddProduct(
   return offer;
 }
 
+/** تعديل بيانات المنتج نفسه (الاسم/الوصف/العلامة/التصنيف) — يظهر في كل المتاجر التي تبيعه. */
+export async function merchantUpdateProduct(
+  productId: string,
+  patch: { name?: string; description?: string | null; brand?: string | null; category?: string },
+) {
+  const { error } = await supabase.from("products").update(patch).eq("id", productId);
+  if (error) throw error;
+}
+
+/** استبدال صورة المنتج (أو إضافتها إن لم توجد) لعرض معيّن. */
+export async function merchantReplaceOfferImage(offerId: string, file: File) {
+  const imageUrl = await uploadImageToBucket(file, "product-media");
+  const { data: existing, error: qErr } = await supabase
+    .from("product_images")
+    .select("id")
+    .eq("offer_id", offerId)
+    .eq("is_primary", true)
+    .maybeSingle();
+  if (qErr) throw qErr;
+  if (existing) {
+    const { error } = await supabase
+      .from("product_images")
+      .update({ image_url: imageUrl })
+      .eq("id", existing.id);
+    if (error) throw error;
+  } else {
+    const { error } = await supabase
+      .from("product_images")
+      .insert({ offer_id: offerId, image_url: imageUrl, is_primary: true });
+    if (error) throw error;
+  }
+  return imageUrl;
+}
+
 export async function fetchStoreReservations(storeId: string) {
   const { data, error } = await supabase
     .from("reservations")
@@ -609,7 +829,9 @@ export function isValidDzPhone(v: string) {
 export async function fetchOrder(orderId: string) {
   const { data, error } = await supabase
     .from("orders")
-    .select("*, items:order_items(*, store:stores(id, name, phone, whatsapp)), wilaya:wilayas(name_ar)")
+    .select(
+      "*, items:order_items(*, store:stores(id, name, phone, whatsapp)), wilaya:wilayas(name_ar)",
+    )
     .eq("id", orderId)
     .maybeSingle();
   if (error) throw error;
@@ -647,15 +869,27 @@ export async function updateMyProfile(patch: {
   phone: string;
   wilaya_id: number | null;
   commune: string;
+  avatar_url?: string | null;
 }) {
   const { data: u } = await supabase.auth.getUser();
   if (!u.user) throw new Error(ERRORS["not_authenticated"]);
+  const data: Record<string, unknown> = {
+    full_name: patch.full_name,
+    phone: patch.phone,
+    wilaya_id: patch.wilaya_id,
+    commune: patch.commune,
+  };
+  // صورة الملف: تُحفظ فقط إذا كان العمود موجودًا في القاعدة (هجرة 202610130001)
+  if (patch.avatar_url !== undefined) {
+    const support = await fetchSchemaSupport();
+    if (support.avatar) data.avatar_url = patch.avatar_url;
+  }
   const existing = await fetchMyProfile();
   if (existing) {
-    const { error } = await supabase.from("profiles").update(patch).eq("user_id", u.user.id);
+    const { error } = await supabase.from("profiles").update(data).eq("user_id", u.user.id);
     if (error) throw error;
   } else {
-    const { error } = await supabase.from("profiles").insert({ ...patch, user_id: u.user.id });
+    const { error } = await supabase.from("profiles").insert({ ...data, user_id: u.user.id });
     if (error) throw error;
   }
 }
@@ -675,9 +909,20 @@ export async function merchantUpdateStore(
     opening_hours: { open: string; close: string; closed_days: number[] };
     logo_url?: string;
     cover_url?: string;
+    instagram_url?: string | null;
+    facebook_url?: string | null;
   },
 ) {
-  const { error } = await supabase.from("stores").update(patch).eq("id", storeId);
+  const data: Record<string, unknown> = { ...patch };
+  // روابط التواصل: تُحفظ فقط إذا كانت الأعمدة موجودة (هجرة 202610130001)
+  if (patch.instagram_url !== undefined || patch.facebook_url !== undefined) {
+    const support = await fetchSchemaSupport();
+    if (!support.storeSocials) {
+      delete data.instagram_url;
+      delete data.facebook_url;
+    }
+  }
+  const { error } = await supabase.from("stores").update(data).eq("id", storeId);
   if (error) throw error;
 }
 

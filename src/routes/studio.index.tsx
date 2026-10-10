@@ -1,16 +1,19 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   Check,
   ImagePlus,
   PackagePlus,
+  Pencil,
+  Settings,
   ShieldCheck,
   ShoppingBag,
   Sparkles,
   Store,
   ToggleLeft,
   ToggleRight,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
@@ -23,15 +26,20 @@ import {
   merchantConfirmReservation,
   merchantCreateStore,
   merchantQuickAddProduct,
+  merchantReplaceOfferImage,
   merchantToggleAvailability,
+  merchantUpdateOffer,
   merchantUpdateOrderStatus,
+  merchantUpdateProduct,
   fetchMyRoles,
+  primaryImage,
+  type OfferFull,
 } from "@/lib/sooqy";
-import { formatDA } from "@/lib/geo";
+import { formatDA, geoErrorMessage, useGeo } from "@/lib/geo";
 import { WilayaSelect } from "@/components/sooqy/WilayaSelect";
 import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/studio")({
+export const Route = createFileRoute("/studio/")({
   head: () => ({
     meta: [
       { title: "SOOQY Business — استوديو التاجر" },
@@ -55,6 +63,8 @@ function StudioPage() {
     address_line: "",
     open: "09:00",
     close: "18:00",
+    latitude: null as number | null,
+    longitude: null as number | null,
   });
   const [productForm, setProductForm] = useState({
     name: "",
@@ -69,6 +79,18 @@ function StudioPage() {
   const [image, setImage] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [code, setCode] = useState("");
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const editImageInputRef = useRef<HTMLInputElement>(null);
+  const [editing, setEditing] = useState<OfferFull | null>(null);
+  const [editForm, setEditForm] = useState({
+    name: "",
+    price: "",
+    stock: "",
+    category: "shoes",
+    brand: "",
+    description: "",
+  });
+  const [editImage, setEditImage] = useState<File | null>(null);
 
   const roles = useQuery({ queryKey: ["my-roles"], queryFn: fetchMyRoles, enabled: !!user });
   const store = useQuery({ queryKey: ["my-store"], queryFn: fetchMyStore, enabled: !!user });
@@ -106,7 +128,14 @@ function StudioPage() {
   if (!user) {
     return <AuthGate onLogin={() => navigate({ to: "/auth", search: { redirect: "/studio" } })} />;
   }
-  if (!canManage) {
+  if (store.isLoading || roles.isLoading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <span className="size-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+  if (!canManage || !store.data) {
     return (
       <MerchantOnboarding
         onSubmit={async (input) => {
@@ -160,8 +189,14 @@ function StudioPage() {
     }
     setBusy(true);
     try {
-      const sizes = productForm.sizes.split(/[،,]/).map((v) => v.trim()).filter(Boolean);
-      const colors = productForm.colors.split(/[،,]/).map((v) => v.trim()).filter(Boolean);
+      const sizes = productForm.sizes
+        .split(/[،,]/)
+        .map((v) => v.trim())
+        .filter(Boolean);
+      const colors = productForm.colors
+        .split(/[،,]/)
+        .map((v) => v.trim())
+        .filter(Boolean);
       await merchantQuickAddProduct(
         {
           storeId: store.data.id,
@@ -170,7 +205,9 @@ function StudioPage() {
           stock: Number(productForm.stock),
           category: productForm.category,
           ...(productForm.brand.trim() ? { brand: productForm.brand.trim() } : {}),
-          ...(productForm.description.trim() ? { description: productForm.description.trim() } : {}),
+          ...(productForm.description.trim()
+            ? { description: productForm.description.trim() }
+            : {}),
           ...(sizes.length ? { sizes } : {}),
           ...(colors.length ? { colors } : {}),
         },
@@ -196,6 +233,49 @@ function StudioPage() {
     }
   };
 
+  const startEdit = (o: OfferFull) => {
+    setEditing(o);
+    setEditForm({
+      name: o.product.name,
+      price: String(o.price),
+      stock: String(o.stock_quantity),
+      category: o.product.category,
+      brand: o.product.brand ?? "",
+      description: o.product.description ?? "",
+    });
+    setEditImage(null);
+  };
+
+  const saveEdit = async () => {
+    if (!editing) return;
+    const clean = editForm.name.trim();
+    if (!clean || !editForm.price || !Number(editForm.stock)) {
+      toast.error("املأ اسم المنتج والسعر والكمية.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await merchantUpdateProduct(editing.product_id, {
+        name: clean,
+        description: editForm.description.trim() || null,
+        brand: editForm.brand.trim() || null,
+        category: editForm.category,
+      });
+      await merchantUpdateOffer(editing.id, {
+        price: Number(editForm.price),
+        stock_quantity: Number(editForm.stock),
+      });
+      if (editImage) await merchantReplaceOfferImage(editing.id, editImage);
+      toast.success("تم تحديث المنتج ✅");
+      setEditing(null);
+      await qc.invalidateQueries({ queryKey: ["my-store-offers", store.data.id] });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "تعذر تحديث المنتج.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="space-y-5 px-4 pb-24 pt-6">
       <header className="flex items-start justify-between gap-3">
@@ -214,11 +294,19 @@ function StudioPage() {
             <p className="line-clamp-1 font-bold">{store.data?.name ?? "متجرك"}</p>
             <p className="text-xs text-muted-foreground">{store.data?.commune ?? "قيد الإعداد"}</p>
           </div>
-          {store.data?.is_verified && (
-            <span className="flex items-center gap-1 rounded-full bg-success-soft px-2 py-1 text-xs font-bold text-success">
-              <ShieldCheck className="size-3.5" /> موثق
-            </span>
-          )}
+          <div className="flex shrink-0 items-center gap-2">
+            {store.data?.is_verified && (
+              <span className="flex items-center gap-1 rounded-full bg-success-soft px-2 py-1 text-xs font-bold text-success">
+                <ShieldCheck className="size-3.5" /> موثق
+              </span>
+            )}
+            <Link
+              to="/studio/settings"
+              className="flex items-center gap-1 rounded-full bg-primary-soft px-3 py-1.5 text-xs font-bold text-primary-soft-foreground transition active:scale-95"
+            >
+              <Settings className="size-3.5" /> تخصيص المتجر
+            </Link>
+          </div>
         </div>
         <div className="mt-4 grid grid-cols-3 gap-2 text-center">
           <Stat label="منتجات" value={String(offers.data?.length ?? 0)} />
@@ -331,16 +419,21 @@ function StudioPage() {
                 rows={2}
                 className="rounded-xl border border-input bg-background px-3 py-2 outline-none transition focus:ring-2 focus:ring-ring"
               />
-              <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed bg-background p-3 text-sm">
+              <button
+                type="button"
+                onClick={() => imageInputRef.current?.click()}
+                className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed bg-background p-3 text-sm"
+              >
                 <ImagePlus className="size-4 text-primary" />
                 {image ? image.name : "رفع صورة المنتج"}
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setImage(e.target.files?.[0] ?? null)}
-                  className="hidden"
-                />
-              </label>
+              </button>
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/*"
+                onChange={(e) => setImage(e.target.files?.[0] ?? null)}
+                className="hidden"
+              />
               <button
                 onClick={addProduct}
                 disabled={busy}
@@ -353,38 +446,152 @@ function StudioPage() {
 
           <div className="rounded-2xl border border-border bg-card p-4">
             <h2 className="mb-3 font-bold">المنتجات الحالية</h2>
-            <div className="space-y-2">
-              {offers.data?.map((offer) => (
-                <div
-                  key={offer.id}
-                  className="flex items-center justify-between rounded-2xl bg-background p-3"
-                >
-                  <div>
-                    <p className="font-bold">{offer.product.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatDA(offer.price)} · {offer.stock_quantity} في المخزن
-                    </p>
-                  </div>
+
+            {editing && (
+              <div className="mb-3 rounded-2xl border border-primary/25 bg-primary-soft/40 p-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <h3 className="flex items-center gap-1.5 text-sm font-bold">
+                    <Pencil className="size-3.5 text-primary" /> تعديل المنتج
+                  </h3>
                   <button
                     type="button"
-                    onClick={async () => {
-                      await merchantToggleAvailability(offer.id, !offer.is_available);
-                      await qc.invalidateQueries({ queryKey: ["my-store-offers", store.data?.id] });
-                    }}
-                    className={cn(
-                      "flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-bold",
-                      offer.is_available
-                        ? "bg-success-soft text-success"
-                        : "bg-muted text-muted-foreground",
-                    )}
+                    onClick={() => setEditing(null)}
+                    className="rounded-full bg-card p-1.5 text-muted-foreground transition hover:text-foreground"
+                    aria-label="إغلاق التحرير"
                   >
-                    {offer.is_available ? (
-                      <ToggleRight className="size-4" />
-                    ) : (
-                      <ToggleLeft className="size-4" />
-                    )}
-                    {offer.is_available ? "متوفر" : "غير متوفر"}
+                    <X className="size-4" />
                   </button>
+                </div>
+                <div className="grid gap-2">
+                  <input
+                    value={editForm.name}
+                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                    placeholder="اسم المنتج"
+                    className="h-11 rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-ring"
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      value={editForm.price}
+                      onChange={(e) => setEditForm({ ...editForm, price: e.target.value })}
+                      placeholder="السعر دج"
+                      type="number"
+                      min="0"
+                      className="h-11 rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-ring"
+                    />
+                    <input
+                      value={editForm.stock}
+                      onChange={(e) => setEditForm({ ...editForm, stock: e.target.value })}
+                      placeholder="الكمية"
+                      type="number"
+                      min="0"
+                      className="h-11 rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-ring"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <select
+                      value={editForm.category}
+                      onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+                      className="h-11 rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-ring"
+                    >
+                      <option value="shoes">أحذية</option>
+                      <option value="phones">هواتف</option>
+                      <option value="cosmetics">مستحضرات التجميل</option>
+                      <option value="clothes">ملابس</option>
+                      <option value="capsules">كبسولات</option>
+                      <option value="other">أخرى</option>
+                    </select>
+                    <input
+                      value={editForm.brand}
+                      onChange={(e) => setEditForm({ ...editForm, brand: e.target.value })}
+                      placeholder="العلامة التجارية"
+                      className="h-11 rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-ring"
+                    />
+                  </div>
+                  <textarea
+                    value={editForm.description}
+                    onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                    placeholder="وصف المنتج"
+                    rows={2}
+                    className="rounded-xl border border-input bg-background px-3 py-2 outline-none transition focus:ring-2 focus:ring-ring"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => editImageInputRef.current?.click()}
+                    className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed bg-background p-2.5 text-sm"
+                  >
+                    <ImagePlus className="size-4 text-primary" />
+                    {editImage ? editImage.name : "تغيير صورة المنتج"}
+                  </button>
+                  <input
+                    ref={editImageInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setEditImage(e.target.files?.[0] ?? null)}
+                    className="hidden"
+                  />
+                  <button
+                    onClick={saveEdit}
+                    disabled={busy}
+                    className="rounded-2xl bg-primary py-3 font-bold text-primary-foreground disabled:opacity-50"
+                  >
+                    {busy ? "جارٍ الحفظ..." : "حفظ التعديلات"}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              {offers.data?.map((offer) => (
+                <div key={offer.id} className="rounded-2xl bg-background p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      {primaryImage(offer.images) && (
+                        <img
+                          src={primaryImage(offer.images)!}
+                          alt=""
+                          className="size-10 shrink-0 rounded-lg object-cover"
+                        />
+                      )}
+                      <div className="min-w-0">
+                        <p className="line-clamp-1 font-bold">{offer.product.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatDA(offer.price)} · {offer.stock_quantity} في المخزن
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => startEdit(offer)}
+                        className="rounded-full bg-muted p-2 text-muted-foreground transition hover:bg-primary hover:text-primary-foreground"
+                        aria-label="تعديل المنتج"
+                      >
+                        <Pencil className="size-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          await merchantToggleAvailability(offer.id, !offer.is_available);
+                          await qc.invalidateQueries({
+                            queryKey: ["my-store-offers", store.data?.id],
+                          });
+                        }}
+                        className={cn(
+                          "flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-bold",
+                          offer.is_available
+                            ? "bg-success-soft text-success"
+                            : "bg-muted text-muted-foreground",
+                        )}
+                      >
+                        {offer.is_available ? (
+                          <ToggleRight className="size-4" />
+                        ) : (
+                          <ToggleLeft className="size-4" />
+                        )}
+                        {offer.is_available ? "متوفر" : "غير متوفر"}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               ))}
               {!offers.data?.length && (
@@ -476,6 +683,32 @@ function StudioPage() {
 
           <div className="rounded-2xl border border-border bg-card p-4">
             <h2 className="mb-3 font-bold">طلبات التوصيل</h2>
+            {(() => {
+              const soldTotal = (orders.data ?? []).reduce(
+                (sum, i) => sum + i.unit_price * i.quantity,
+                0,
+              );
+              const rate = store.data?.commission_rate ?? 7;
+              const commission = Math.round((soldTotal * rate) / 100);
+              return soldTotal > 0 ? (
+                <div className="mb-3 grid grid-cols-3 gap-2">
+                  <div className="rounded-2xl bg-muted p-3 text-center">
+                    <p className="text-base font-bold">{formatDA(soldTotal)}</p>
+                    <p className="text-[10px] text-muted-foreground">مبيعات المتجر</p>
+                  </div>
+                  <div className="rounded-2xl bg-muted p-3 text-center">
+                    <p className="text-base font-bold">{formatDA(commission)}</p>
+                    <p className="text-[10px] text-muted-foreground">عمولة SOOQY ({rate}%)</p>
+                  </div>
+                  <div className="rounded-2xl bg-success-soft p-3 text-center">
+                    <p className="text-base font-bold text-success">
+                      {formatDA(soldTotal - commission)}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">صافي المستحق</p>
+                  </div>
+                </div>
+              ) : null;
+            })()}
             <div className="space-y-2">
               {orders.data?.map((item) => (
                 <div key={item.id} className="rounded-2xl bg-background p-3">
@@ -550,6 +783,8 @@ type StoreForm = {
   address_line: string;
   open: string;
   close: string;
+  latitude: number | null;
+  longitude: number | null;
 };
 
 function MerchantOnboarding({
@@ -562,6 +797,18 @@ function MerchantOnboarding({
   setForm: React.Dispatch<React.SetStateAction<StoreForm>>;
 }) {
   const [busy, setBusy] = useState(false);
+  const { ask, locating } = useGeo();
+
+  const locate = async () => {
+    const { pos: found, reason: why } = await ask();
+    if (!found) {
+      toast.error(geoErrorMessage(why));
+      return;
+    }
+    setForm((f) => ({ ...f, latitude: found.lat, longitude: found.lng }));
+    toast.success("تم تحديد موقع المتجر 📍");
+  };
+
   const submit = async () => {
     if (!form.name || !form.phone || !form.wilaya_id || !form.commune || !form.address_line) {
       toast.error("املأ بيانات المتجر المطلوبة.");
@@ -572,8 +819,8 @@ function MerchantOnboarding({
       await onSubmit({
         ...form,
         wilaya_id: form.wilaya_id ?? 0,
-        latitude: null,
-        longitude: null,
+        latitude: form.latitude,
+        longitude: form.longitude,
       });
       toast.success("تم فتح المتجر بنجاح");
     } catch (error) {
@@ -627,6 +874,51 @@ function MerchantOnboarding({
           placeholder="العنوان"
           className="w-full rounded-xl border border-input bg-background px-3 py-2 outline-none transition focus:ring-2 focus:ring-ring"
         />
+
+        {/* موقع المتجر على الخريطة */}
+        <div className="rounded-xl border border-dashed border-primary/40 bg-primary-soft/30 p-3">
+          <p className="mb-2 text-xs font-bold text-primary">📍 موقع المتجر على الخريطة</p>
+          <button
+            type="button"
+            onClick={locate}
+            disabled={locating}
+            className="w-full rounded-xl bg-primary py-2.5 text-sm font-bold text-primary-foreground disabled:opacity-50"
+          >
+            {locating ? "جارٍ تحديد الموقع..." : "تحديد موقعي الحالي"}
+          </button>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <input
+              value={form.latitude ?? ""}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  latitude: e.target.value ? Number(e.target.value) : null,
+                })
+              }
+              placeholder="خط العرض"
+              inputMode="decimal"
+              dir="ltr"
+              className="h-10 rounded-lg border border-input bg-background px-2 text-left text-xs outline-none focus:ring-2 focus:ring-ring"
+            />
+            <input
+              value={form.longitude ?? ""}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  longitude: e.target.value ? Number(e.target.value) : null,
+                })
+              }
+              placeholder="خط الطول"
+              inputMode="decimal"
+              dir="ltr"
+              className="h-10 rounded-lg border border-input bg-background px-2 text-left text-xs outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+          {form.latitude != null && form.longitude != null && (
+            <p className="mt-2 text-[11px] font-bold text-success">✓ سيظهر متجرك على الخريطة</p>
+          )}
+        </div>
+
         <div className="grid grid-cols-2 gap-2">
           <input
             type="time"
@@ -680,7 +972,9 @@ function ModeButton({
       onClick={onClick}
       className={cn(
         "flex items-center justify-center gap-2 rounded-2xl border py-3 text-sm font-bold",
-        active ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground",
+        active
+          ? "border-primary bg-primary text-primary-foreground"
+          : "border-border bg-card text-muted-foreground",
       )}
     >
       <Icon className="size-4" />

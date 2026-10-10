@@ -1,11 +1,18 @@
 import { Link } from "@tanstack/react-router";
-import { MapPin, Navigation } from "lucide-react";
-import { formatDA, formatKm, directionsUrl, isOpenNow } from "@/lib/geo";
+import { MapPin, Navigation, ImageOff } from "lucide-react";
+import { formatDA, formatKm, getStoreStatus } from "@/lib/geo";
 import type { ProductGroup, Store } from "@/lib/sooqy";
 import { isFavorite, toggleFavorite } from "@/lib/favorites";
 import { OpenBadge, VerifiedBadge } from "./badges";
+import { DirectionsButton } from "./DirectionsButton";
 import { RatingStars } from "./rating-stars";
 import { cn } from "@/lib/utils";
+
+/** صورة افتراضية للمنتجات عند غياب الصورة */
+const PRODUCT_PLACEHOLDER = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB2aWV3Qm94PSIwIDAgMjAwIDIwMCI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiNlMmU4ZjAiLz48cGF0aCBkPSJNODAgNzVsMjAgMjAgMzAtMzAiIHN0cm9rZT0iIzk0YTNiOCIgc3Ryb2tlLXdpZHRoPSIyIiBmaWxsPSJub25lIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz48L3N2Zz4=";
+
+/** صورة افتراضية للمتاجر عند غياب الصورة */
+const STORE_PLACEHOLDER = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB2aWV3Qm94PSIwIDAgMjAwIDIwMCI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiNlMmU4ZjAiLz48cGF0aCBkPSJNMTAwIDUwYzI3LjYgMCA1MCAyMi40IDUwIDUwcy0yMi40IDUwLTUwIDUwLTUwLTIyLjQtNTAtNTBTNzIuNCA1MCAxMDAgNTB6bTAgMTgwYzcyLjYgMCAxMzAtNTkuNCAxMzAtMTMwUzE3Mi42IDUwIDEwMCA1MHoiIHN0cm9rZT0iIzYzNjZmMSIgc3Ryb2tlLXdpZHRoPSIyIiBmaWxsPSJub25lIi8+PC9zdmc+";
 
 /** زر المفضلة (قلب) — يحفظ المعرف محليًا */
 export function FavoriteButton({
@@ -77,10 +84,17 @@ export function ProductCard({ g }: { g: ProductGroup }) {
             alt={g.product.name}
             loading="lazy"
             decoding="async"
+            onError={(e) => { e.currentTarget.src = PRODUCT_PLACEHOLDER; }}
             className="size-full object-cover transition duration-500 group-hover:scale-105"
           />
         ) : (
-          <div className="flex size-full items-center justify-center text-4xl">🛍️</div>
+          <img
+            src={PRODUCT_PLACEHOLDER}
+            alt={g.product.name}
+            loading="lazy"
+            decoding="async"
+            className="size-full object-cover"
+          />
         )}
         <FavoriteButton kind="products" id={g.product.id} className="absolute top-2 right-2" />
         {discount && (
@@ -109,7 +123,7 @@ export function ProductCard({ g }: { g: ProductGroup }) {
 }
 
 export function StoreCard({ s, distance }: { s: Store; distance?: number | null }) {
-  const open = isOpenNow(s.opening_hours);
+  const status = getStoreStatus(s.opening_hours);
   return (
     <Link
       to="/stores/$storeId"
@@ -118,16 +132,25 @@ export function StoreCard({ s, distance }: { s: Store; distance?: number | null 
       className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition duration-200 hover:shadow-soft"
     >
       <div className="relative aspect-[16/9] overflow-hidden bg-neutral-100 dark:bg-neutral-800">
-        {(s.cover_url || s.logo_url) && (
+        {(s.cover_url || s.logo_url) ? (
           <img
             src={s.cover_url || s.logo_url!}
             alt={s.name}
             loading="lazy"
             decoding="async"
+            onError={(e) => { e.currentTarget.src = STORE_PLACEHOLDER; }}
             className="size-full object-cover transition duration-500 group-hover:scale-105"
           />
+        ) : (
+          <img
+            src={STORE_PLACEHOLDER}
+            alt={s.name}
+            loading="lazy"
+            decoding="async"
+            className="size-full object-cover"
+          />
         )}
-        <OpenBadge open={open} className="absolute top-2 right-2 bg-card/95 backdrop-blur" />
+        <OpenBadge status={status} detailed className="absolute top-2 right-2 bg-card/95 backdrop-blur" />
         <FavoriteButton kind="stores" id={s.id} className="absolute bottom-2 right-2" />
       </div>
       <div className="flex flex-1 flex-col gap-1 p-3">
@@ -154,7 +177,7 @@ export function StoreCard({ s, distance }: { s: Store; distance?: number | null 
 
 /** بطاقة متجر مصغّرة (تُستخدم في صفحات المنتج والدفع) */
 export function StoreMiniCard({ s, distance }: { s: Store; distance?: number | null }) {
-  const open = isOpenNow(s.opening_hours);
+  const status = getStoreStatus(s.opening_hours);
   return (
     <Link
       to="/stores/$storeId"
@@ -162,8 +185,16 @@ export function StoreMiniCard({ s, distance }: { s: Store; distance?: number | n
       className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3 transition hover:shadow-soft"
     >
       <span className="relative size-12 shrink-0 overflow-hidden rounded-xl bg-neutral-100 dark:bg-neutral-800">
-        {(s.logo_url || s.cover_url) && (
-          <img src={s.logo_url || s.cover_url!} alt={s.name} loading="lazy" className="size-full object-cover" />
+        {(s.logo_url || s.cover_url) ? (
+          <img
+            src={s.logo_url || s.cover_url!}
+            alt={s.name}
+            loading="lazy"
+            onError={(e) => { e.currentTarget.src = STORE_PLACEHOLDER; }}
+            className="size-full object-cover"
+          />
+        ) : (
+          <img src={STORE_PLACEHOLDER} alt={s.name} loading="lazy" className="size-full object-cover" />
         )}
       </span>
       <span className="min-w-0 flex-1">
@@ -171,19 +202,70 @@ export function StoreMiniCard({ s, distance }: { s: Store; distance?: number | n
         <span className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
           <RatingStars rating={Number(s.rating)} size="size-3" showValue />
           {distance != null && <span>{formatKm(distance)}</span>}
-          <OpenBadge open={open} />
+          <OpenBadge status={status} detailed />
         </span>
       </span>
-      <a
-        href={directionsUrl(s.latitude, s.longitude, s.name)}
-        target="_blank"
-        rel="noreferrer"
-        aria-label="الاتجاهات إلى المتجر"
-        onClick={(e) => e.stopPropagation()}
-        className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary transition active:scale-95"
+      <DirectionsButton
+        lat={s.latitude}
+        lng={s.longitude}
+        label={s.name}
+        className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary"
       >
         <Navigation className="size-4" />
-      </a>
+      </DirectionsButton>
+    </Link>
+  );
+}
+
+/** بطاقة عرض (عرض متجر) للصفحة الرئيسية */
+export function OfferCard({ offer }: { offer: OfferFull }) {
+  const { product, store, images } = offer;
+  const discountPct = offer.old_price && offer.old_price > offer.price
+    ? Math.round(((offer.old_price - offer.price) / offer.old_price) * 100)
+    : 0;
+  const discount = discountPct > 0;
+  const rating = Number(store.rating) || 0;
+  const status = getStoreStatus(store.opening_hours);
+  const img = images?.length ? images[0].image_url : null;
+
+  return (
+    <Link
+      to="/products/$productId"
+      params={{ productId: product.id }}
+      preload="intent"
+      className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition duration-200 hover:shadow-soft"
+    >
+      <div className="relative aspect-square overflow-hidden bg-neutral-100 dark:bg-neutral-800">
+        {img ? (
+          <img
+            src={img}
+            alt={product.name}
+            loading="lazy"
+            decoding="async"
+            onError={(e) => { e.currentTarget.src = PRODUCT_PLACEHOLDER; }}
+            className="size-full object-cover transition duration-500 group-hover:scale-105"
+          />
+        ) : (
+          <img src={PRODUCT_PLACEHOLDER} alt={product.name} loading="lazy" decoding="async" className="size-full object-cover" />
+        )}
+        <FavoriteButton kind="products" id={product.id} className="absolute top-2 right-2" />
+        {discount && (
+          <span className="absolute top-2 left-2 rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-bold text-white">
+            -{discountPct}%
+          </span>
+        )}
+      </div>
+      <div className="flex flex-1 flex-col p-3">
+        <span className="mb-1 line-clamp-2 text-sm font-bold text-foreground">{product.name}</span>
+        <div className="mt-auto flex items-center justify-between">
+          <span className="text-h4 text-primary">{formatDA(offer.price)}</span>
+          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <RatingStars rating={rating} size="size-3" showValue />
+            <OpenBadge status={status} detailed />
+          </div>
+        </div>
+        <span className="mt-1 line-clamp-1 text-[11px] text-muted-foreground">{store.name}</span>
+      </div>
     </Link>
   );
 }

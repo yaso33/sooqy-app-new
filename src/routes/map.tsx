@@ -2,10 +2,12 @@ import { createFileRoute, ClientOnly, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { lazy, Suspense, useState } from "react";
 import { Crosshair, Filter, Navigation, Search, X } from "lucide-react";
-import { ALGIERS, directionsUrl, formatKm, isOpenNow, useGeo } from "@/lib/geo";
+import { toast } from "sonner";
+import { ALGIERS, formatKm, geoErrorMessage, isOpenNow, useGeo } from "@/lib/geo";
 import { fetchNearStores } from "@/lib/sooqy";
 import { OpenBadge, VerifiedBadge } from "@/components/sooqy/badges";
 import { ErrorState } from "@/components/sooqy/error-state";
+import { DirectionsButton } from "@/components/sooqy/DirectionsButton";
 import { RatingStars } from "@/components/sooqy/rating-stars";
 import { cn } from "@/lib/utils";
 
@@ -24,7 +26,7 @@ export const Route = createFileRoute("/map")({
 type Sort = "near" | "rating";
 
 function MapPage() {
-  const { pos, denied } = useGeo();
+  const { pos, denied, locating, ask } = useGeo();
   const [active, setActive] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [onlyOpen, setOnlyOpen] = useState(false);
@@ -46,9 +48,9 @@ function MapPage() {
   const sel = list.find((s) => s.id === active) ?? stores.data?.find((s) => s.id === active);
 
   return (
-    <div className="fixed inset-0 bottom-16 z-0">
-      <ClientOnly fallback={<div className="size-full animate-pulse bg-muted" />}>
-        <Suspense fallback={<div className="size-full animate-pulse bg-muted" />}>
+    <div className="fixed inset-0 bottom-16 z-0 h-[calc(100vh-4rem)]">
+      <ClientOnly fallback={<div className="h-full w-full animate-pulse bg-muted" />}>
+        <Suspense fallback={<div className="h-full w-full animate-pulse bg-muted" />}>
           <StoreMap
             center={pos && center === ALGIERS ? pos : center}
             user={pos}
@@ -83,7 +85,7 @@ function MapPage() {
 
       {stores.isError && (
         <div className="absolute inset-x-4 top-32 z-[1000]">
-          <ErrorState onRetry={() => stores.refetch()} />
+          <ErrorState scope="map:stores" error={stores.error} onRetry={() => stores.refetch()} />
         </div>
       )}
 
@@ -98,8 +100,18 @@ function MapPage() {
         </button>
         <button
           aria-label="موقعي الحالي"
-          onClick={() => pos && setCenter({ ...pos })}
-          className="icon-btn shadow-soft"
+          aria-busy={locating}
+          onClick={async () => {
+            const { pos: found, reason: why } = pos ? { pos, reason: null } : await ask();
+            if (!found) {
+              toast.error(geoErrorMessage(why));
+              return;
+            }
+            setCenter({ lat: found.lat, lng: found.lng });
+            setActive(null);
+            toast.success("تم تحديد موقعك");
+          }}
+          className={cn("icon-btn shadow-soft", locating && "animate-pulse")}
         >
           <Crosshair className="size-5" />
         </button>
@@ -140,15 +152,15 @@ function MapPage() {
             >
               عرض المتجر
             </Link>
-            <a
-              href={directionsUrl(sel.latitude, sel.longitude, sel.name)}
-              target="_blank"
-              rel="noreferrer"
+            <DirectionsButton
+              lat={sel.latitude}
+              lng={sel.longitude}
+              label={sel.name}
               className="btn-primary !h-11 text-sm"
             >
               <Navigation className="size-4" />
               الاتجاهات
-            </a>
+            </DirectionsButton>
           </div>
         </div>
       )}

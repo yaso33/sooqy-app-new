@@ -20,6 +20,7 @@ import appCss from "../styles.css?url";
 import { AuthProvider } from "@/lib/auth";
 import { BagProvider } from "@/lib/bag";
 import { BottomNav } from "@/components/sooqy/BottomNav";
+import { ConnectionBanner } from "@/components/sooqy/ConnectionBanner";
 import { DynamicIsland } from "@/components/sooqy/DynamicIsland";
 import { OnboardingGate } from "@/components/sooqy/OnboardingGate";
 import { PageTransition } from "@/components/sooqy/page-transition";
@@ -122,6 +123,7 @@ function RootComponent() {
               <Outlet />
             </PageTransition>
           </div>
+          <ConnectionBanner />
           <DynamicIsland />
           <BottomNav />
           <Splash />

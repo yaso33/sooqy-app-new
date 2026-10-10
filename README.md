@@ -1,5 +1,20 @@
 # sooQy app
 
+> **الوضع الحالي:** مشروع Vite + React + TanStack Start + Tailwind (منظومة Indigo) على Supabase. **لا يحتوي أي بيانات تجريبية** — `supabase/seed.sql` للتطوير المحلي فقط ويُطبَّق يدويًا عبر `node scripts/apply-migrations.mjs --seed`؛ لتنظيف صفوف seed من قاعدة حيوية: `node scripts/cleanup-demo-data.mjs` (مع `--dry-run` للاستعراض). كل الميزات تقرأ/تكتب عبر `src/lib/sooqy.ts` → Supabase.
+
+# 🚀 إطلاق النسخة المتكاملة (Beta)
+
+قاعدة Supabase الحيوية لديها **الجداول فقط** — كل دوال RPC التشغيلية مفقودة. لتشغيل التطبيق فعليًا:
+
+1. **أضف `DATABASE_URL` إلى `/workspace/.env`** (Supabase → Database → Connection string → URI، أو استخدم pooler `aws-0-eu-west-1.pooler.supabase.com:6543`).
+2. **طبّق ملف اللحاق الشامل** (idempotent — آمن للتكرار):
+   - عبر SQL Editor في لوحة Supabase: الصق محتوى `supabase/migrations/202610140001_beta_ready.sql` كاملًا وشغّله، **أو**
+   - عبر السكربت: `node scripts/apply-migrations.mjs --only=202610140001`.
+
+ما يفعله الملف: دوال RPC المفقودة (create_order، create_reservation، cancel_reservation، merchant_confirm_reservation، merchant_confirm_all_stock، المشاهدات…)، أعمدة التخصيص (روابط التواصل، صورة الملف، view_count)، **نظام العمولة** (`stores.commission_rate` افتراضي 7% + `orders.commission_amount` تُحتسب في create_order)، **المراجعات الموثّقة** (RPC `submit_review` — لا تُقبل إلا بعد طلب مُسلَّم أو حجز مُستلَم، ويُغلق الإدراج المباشر)، triggers الإشعارات، سلات التخزين والفهارس.
+
+بعد التطبيق: أعد تشغيل التطبيق وستعمل الطلبات والحجوزات والمراجعات والمشاهدات فورًا، ويظهر ملخص العمولة في استوديو التاجر.
+
 # ⚡ THE COMPLETE SELF-CONTAINED MASTER PROMPT: SOOQY (Algeria 🇩🇿)
 
 قم ببناء منصة التجارة المحلية والتجزئة الميدانية الكاملة **SOOQY** (الويب وتطبيق PWA متكامل) من الصفر حتى مرحلة الإنتاج الفعلي. يجب كتابة الكود البرمجي بالكامل لجميع الملفات والصفحات وقواعد البيانات دون أي استدعاءات وهمية (No Mocking) ودون ترك أي جزء بدون تطبيق (Zero Incomplete Code).

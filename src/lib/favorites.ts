@@ -56,12 +56,19 @@ export function getFavorites(): Fav {
   return cache;
 }
 
+/** لقطة ثابتة تُستخدم على الخادم — يجب أن تكون نفس المرجع دائمًا
+ *  وإلا دخل React في حلقة إعادة تصيير لا نهائية أثناء SSR. */
+const EMPTY: Fav = { products: [], stores: [] };
+
 export function useFavorites(): Fav {
   return useSyncExternalStore(
     (cb) => {
       listeners.add(cb);
-      return () => listeners.delete(cb);
+      return () => {
+        listeners.delete(cb);
+      };
     },
     () => cache,
+    () => EMPTY,
   );
 }

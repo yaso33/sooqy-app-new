@@ -16,5 +16,8 @@ export default defineConfig(async () => {
     resolve: {
       alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
     },
+    // لا تُضِف optimizeDeps.exclude لـ maplibre-gl: إخراجها من التجميع المسبق
+    // يجعل التطوير يخدم المكتبة غير مُجمَّعة (~1000 طلب) فيتأخر ظهور الخريطة.
+    // الحل الصحيح لعنوان الـ worker مطبَّق في StoreMap (setWorkerUrl).
   };
 });

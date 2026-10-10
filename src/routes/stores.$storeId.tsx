@@ -4,20 +4,36 @@ import { useState } from "react";
 import {
   ArrowRight,
   Clock,
+  Eye,
+  Facebook,
   Heart,
+  Instagram,
   MapPin,
   MessageCircle,
   Navigation,
   Phone,
+  Plus,
+  Settings,
   Share2,
   Star,
+  Store,
 } from "lucide-react";
-import { directionsUrl, formatDA, isOpenNow, useGeo, type OpeningHours } from "@/lib/geo";
-import { categoryLabel, getStore, getStoreOffers, primaryImage, stockLevel, storeDistance } from "@/lib/sooqy";
-import { isFavorite, toggleFavorite } from "@/lib/favorites";
+import { formatDA, isOpenNow, useGeo, type OpeningHours } from "@/lib/geo";
+import { toast } from "sonner";
+import { useAuth } from "@/lib/auth";
+import {
+  categoryLabel,
+  getStore,
+  getStoreOffers,
+  primaryImage,
+  stockLevel,
+  storeDistance,
+} from "@/lib/sooqy";
+import { useFavorites, toggleFavorite } from "@/lib/favorites";
 import { OpenBadge, StockBadge, VerifiedBadge } from "@/components/sooqy/badges";
 import { EmptyState } from "@/components/sooqy/empty-state";
 import { ReviewSection } from "@/components/sooqy/ReviewSection";
+import { DirectionsButton } from "@/components/sooqy/DirectionsButton";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/stores/$storeId")({
@@ -33,13 +49,25 @@ export const Route = createFileRoute("/stores/$storeId")({
 const DAYS = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
 type Tab = "products" | "about" | "reviews";
 
+/** يكمل الرابط إن أُدخل بدون بروتوكول (instagram.com/... أو @handle). */
+function socialHref(url: string) {
+  const u = url.trim();
+  if (/^https?:\/\//i.test(u)) return u;
+  return `https://${u}`;
+}
+
 function StorePage() {
   const { storeId } = Route.useParams();
   const router = useRouter();
   const { pos } = useGeo();
+  const { user } = useAuth();
   const [tab, setTab] = useState<Tab>("products");
+  const favs = useFavorites();
   const store = useQuery({ queryKey: ["store", storeId], queryFn: () => getStore(storeId) });
-  const offers = useQuery({ queryKey: ["store-offers", storeId], queryFn: () => getStoreOffers(storeId) });
+  const offers = useQuery({
+    queryKey: ["store-offers", storeId],
+    queryFn: () => getStoreOffers(storeId),
+  });
 
   if (store.isLoading)
     return (
@@ -55,7 +83,9 @@ function StorePage() {
   const oh = (s.opening_hours ?? {}) as OpeningHours;
   const open = isOpenNow(s.opening_hours);
   const distance = storeDistance(s, pos);
-  const followed = isFavorite("stores", s.id);
+  const followed = favs.stores.includes(s.id);
+  // مالِك المتجر يرى صفحته كما يراها الزائر + شريط اختصارات إدارية
+  const isOwner = !!user && s.owner_id === user.id;
 
   const byCat = new Map<string, NonNullable<typeof offers.data>>();
   for (const o of offers.data ?? []) {
@@ -74,10 +104,36 @@ function StorePage() {
 
   return (
     <div className="pb-6">
+      {/* شريط المالك — يظهر لك وحدك، والزوار لا يرونه */}
+      {isOwner && (
+        <div className="flex flex-wrap items-center gap-2 bg-primary-soft px-4 py-2.5 text-primary-soft-foreground">
+          <Eye className="size-4 shrink-0" />
+          <p className="min-w-0 flex-1 text-xs font-bold">أنت تشاهد متجرك كما يراه الزوار</p>
+          <Link
+            to="/studio/settings"
+            className="flex items-center gap-1 rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-foreground transition active:scale-95"
+          >
+            <Settings className="size-3.5" /> تخصيص
+          </Link>
+          <Link
+            to="/studio"
+            className="flex items-center gap-1 rounded-full border border-primary/40 px-3 py-1 text-xs font-bold transition active:scale-95"
+          >
+            <Store className="size-3.5" /> لوحة التحكم
+          </Link>
+        </div>
+      )}
+
       {/* الغلاف */}
       <div className="relative h-44 bg-neutral-100 dark:bg-neutral-800">
         {s.cover_url && (
-          <img src={s.cover_url} alt="" loading="lazy" decoding="async" className="size-full object-cover" />
+          <img
+            src={s.cover_url}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className="size-full object-cover"
+          />
         )}
         <button
           onClick={() => router.history.back()}
@@ -125,7 +181,12 @@ function StorePage() {
         {/* الأزرار */}
         <div className="grid grid-cols-3 gap-2">
           <button
-            onClick={() => toggleFavorite("stores", s.id)}
+            onClick={() => {
+              const nowFollowing = toggleFavorite("stores", s.id);
+              toast.success(
+                nowFollowing ? "أُضيف المتجر إلى مفضلتك ❤️" : "أُزيل المتجر من المفضلة",
+              );
+            }}
             className={cn(
               "flex h-11 items-center justify-center gap-1.5 rounded-xl border text-sm font-bold transition active:scale-95",
               followed
@@ -134,17 +195,17 @@ function StorePage() {
             )}
           >
             <Heart className={cn("size-4", followed && "fill-primary text-primary")} />
-            {followed ? "متابَع" : "متابعة"}
+            {followed ? "إلغاء المتابعة" : "متابعة المتجر"}
           </button>
-          <a
-            href={directionsUrl(s.latitude, s.longitude, s.name)}
-            target="_blank"
-            rel="noreferrer"
-            className="flex h-11 items-center justify-center gap-1.5 rounded-xl border border-border bg-card text-sm font-bold transition active:scale-95"
+          <DirectionsButton
+            lat={s.latitude}
+            lng={s.longitude}
+            label={s.name}
+            className="flex h-11 items-center justify-center gap-1.5 rounded-xl border border-border bg-card text-sm font-bold"
           >
             <Navigation className="size-4" />
             الاتجاهات
-          </a>
+          </DirectionsButton>
           <a
             href={`https://wa.me/${(s.whatsapp ?? "").replace(/\D/g, "")}`}
             target="_blank"
@@ -175,7 +236,9 @@ function StorePage() {
                 )}
               >
                 {t.label}
-                {tab === t.id && <span className="absolute inset-x-4 bottom-0 h-0.5 rounded-full bg-primary" />}
+                {tab === t.id && (
+                  <span className="absolute inset-x-4 bottom-0 h-0.5 rounded-full bg-primary" />
+                )}
               </button>
             ))}
           </div>
@@ -204,7 +267,10 @@ function StorePage() {
                             className="size-full object-cover transition duration-500 group-hover:scale-105"
                           />
                         )}
-                        <StockBadge level={stockLevel(o)} className="absolute top-2 right-2 bg-card/95" />
+                        <StockBadge
+                          level={stockLevel(o)}
+                          className="absolute top-2 right-2 bg-card/95"
+                        />
                       </div>
                       <div className="p-3">
                         <p className="line-clamp-1 text-sm font-semibold">{o.product.name}</p>
@@ -216,7 +282,22 @@ function StorePage() {
               </section>
             ))}
             {!offers.isLoading && !offers.data?.length && (
-              <EmptyState icon="🏪" title="لم يضف المتجر أي سلعة بعد" hint="ترقّب وصول منتجات جديدة قريبًا." />
+              <EmptyState
+                icon="🏪"
+                title={isOwner ? "متجرك لا يعرض أي سلعة بعد" : "لم يضف المتجر أي سلعة بعد"}
+                hint={
+                  isOwner
+                    ? "أضف منتجك الأول من لوحة التحكم ليظهر هنا للزوار."
+                    : "ترقّب وصول منتجات جديدة قريبًا."
+                }
+                action={
+                  isOwner ? (
+                    <Link to="/studio" className="btn-primary inline-flex items-center gap-1.5">
+                      <Plus className="size-4" /> أضف منتجًا
+                    </Link>
+                  ) : undefined
+                }
+              />
             )}
           </div>
         )}
@@ -268,7 +349,10 @@ function StorePage() {
             <div className="rounded-2xl border border-border bg-card p-4">
               <h3 className="text-h3 text-foreground">التواصل</h3>
               {s.phone && (
-                <a href={`tel:${s.phone}`} className="mt-2 flex items-center gap-2 text-body text-muted-foreground">
+                <a
+                  href={`tel:${s.phone}`}
+                  className="mt-2 flex items-center gap-2 text-body text-muted-foreground"
+                >
                   <Phone className="size-4 text-primary" /> {s.phone}
                 </a>
               )}
@@ -282,12 +366,38 @@ function StorePage() {
                   <MessageCircle className="size-4 text-success" /> واتساب
                 </a>
               )}
+              {(s.instagram_url || s.facebook_url) && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {s.instagram_url && (
+                    <a
+                      href={socialHref(s.instagram_url)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-xs font-bold text-foreground transition hover:bg-primary hover:text-primary-foreground"
+                    >
+                      <Instagram className="size-3.5" /> إنستغرام
+                    </a>
+                  )}
+                  {s.facebook_url && (
+                    <a
+                      href={socialHref(s.facebook_url)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-xs font-bold text-foreground transition hover:bg-primary hover:text-primary-foreground"
+                    >
+                      <Facebook className="size-3.5" /> فيسبوك
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )}
 
         {/* التقييمات */}
-        {tab === "reviews" && <ReviewSection targetType="store" targetId={s.id} title="تقييمات المتجر" />}
+        {tab === "reviews" && (
+          <ReviewSection targetType="store" targetId={s.id} title="تقييمات المتجر" />
+        )}
       </div>
     </div>
   );

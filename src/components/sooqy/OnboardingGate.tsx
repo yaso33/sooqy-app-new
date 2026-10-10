@@ -1,24 +1,6 @@
-import { useState } from "react";
-import { MapPin, ShoppingBag, Smartphone } from "lucide-react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
-
-const slides = [
-  {
-    icon: MapPin,
-    title: "اكتشف المتاجر من حولك",
-    text: "اعثر على أقرب المتاجر في مدينتك واطّلع على منتجاتها مباشرة على الخريطة.",
-  },
-  {
-    icon: ShoppingBag,
-    title: "تصفح المنتجات بسهولة",
-    text: "قارن الأسعار بين المتاجر المجاورة واختر الأفضل لك بلمسة واحدة.",
-  },
-  {
-    icon: Smartphone,
-    title: "تسوق من هاتفك",
-    text: "اطلب، احجز، وتابع طلباتك حتى باب منزلك مباشرة من التطبيق.",
-  },
-] as const;
+import { INTRO_SLIDES } from "./intro-assets";
 
 const KEY = "sooqy:onboarded";
 
@@ -27,20 +9,41 @@ const KEY = "sooqy:onboarded";
  * واجهة فقط، بلا أي بيانات.
  */
 export function OnboardingGate() {
-  const [done, setDone] = useState(() => {
-    if (typeof window === "undefined") return true;
-    try {
-      return window.localStorage.getItem(KEY) === "1";
-    } catch {
-      return false;
-    }
-  });
+  // نبدأ مطابقًا للخادم (null) ثم نقرأ localStorage بعد التصاق الهيدرويشن —
+  // قراءة localStorage داخل useState تسبّب فشل hydration وشاشة بيضاء في SSR
+  const [done, setDone] = useState(true);
   const [index, setIndex] = useState(0);
+  const [showButton, setShowButton] = useState(false);
+
+  useEffect(() => {
+    try {
+      setDone(window.localStorage.getItem(KEY) === "1");
+    } catch {
+      setDone(false);
+    }
+  }, []);
+
+  // منع التمرير أثناء ظهور شاشات الترحيب
+  useEffect(() => {
+    if (!done) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = prev;
+      };
+    }
+  }, [done]);
+
+  // تأخير ظهور الزر 4 ثوانٍ عند تغيير الشريحة
+  useEffect(() => {
+    const timer = setTimeout(() => setShowButton(true), 4000);
+    return () => clearTimeout(timer);
+  }, [index]);
 
   if (done) return null;
 
-  const slide = slides[index]!;
-  const last = index === slides.length - 1;
+  const slide = INTRO_SLIDES[index]!;
+  const last = index === INTRO_SLIDES.length - 1;
 
   const finish = () => {
     try {
@@ -53,42 +56,39 @@ export function OnboardingGate() {
 
   return (
     <div className="fixed inset-0 z-[90] flex flex-col bg-background">
-      <div className="flex items-center justify-between px-6 pt-6 safe-top">
-        <span className="text-lg font-extrabold text-foreground">SooQy</span>
-        <button
-          onClick={finish}
-          className="rounded-lg px-3 py-2 text-sm font-semibold text-muted-foreground transition-colors active:bg-neutral-100"
-        >
-          تخطي
-        </button>
+      <div className="flex flex-1 relative">
+        <img
+          src={slide.image}
+          alt=""
+          className="h-full w-full object-cover absolute inset-0"
+        />
+        {/* تدرّج سفلي لفصل الأزرار عن محتوى الصورة */}
+        <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-background via-background/80 to-transparent pointer-events-none" />
       </div>
 
-      <div className="flex flex-1 flex-col items-center justify-center px-8 text-center">
-        <div key={index} className="flex size-36 items-center justify-center rounded-[2rem] bg-primary-soft animate-scale-in">
-          <slide.icon className="size-16 text-primary" strokeWidth={1.6} />
+      {showButton && (
+        <div className="absolute left-0 right-0 bottom-0 flex flex-col items-center gap-3 px-6 pb-10 safe-bottom">
+          <button
+            onClick={last ? finish : () => setIndex(index + 1)}
+            className="btn-primary max-w-sm shadow-soft rounded-2xl px-8 py-3 text-base font-medium transition-all duration-200 hover:shadow-lift active:scale-[0.98]"
+          >
+            {last ? "ابدأ الآن" : "التالي"}
+          </button>
+          <div className="flex items-center gap-2">
+            {INTRO_SLIDES.map((_, i) => (
+              <button
+                key={i}
+                aria-label={`الشريحة ${i + 1}`}
+                onClick={() => setIndex(i)}
+                className={cn(
+                  "h-2 rounded-full transition-all duration-300",
+                  i === index ? "w-6 bg-primary" : "w-2 bg-primary/60",
+                )}
+              />
+            ))}
+          </div>
         </div>
-        <h1 className="mt-8 text-h1 text-foreground animate-fade-up">{slide.title}</h1>
-        <p className="mt-3 max-w-xs text-body text-muted-foreground animate-fade-up delay-100">{slide.text}</p>
-      </div>
-
-      <div className="flex flex-col items-center gap-5 px-6 pb-10 safe-bottom">
-        <div className="flex items-center gap-2">
-          {slides.map((_, i) => (
-            <button
-              key={i}
-              aria-label={`الشريحة ${i + 1}`}
-              onClick={() => setIndex(i)}
-              className={cn(
-                "h-2 rounded-full transition-all duration-300",
-                i === index ? "w-6 bg-primary" : "w-2 bg-neutral-300",
-              )}
-            />
-          ))}
-        </div>
-        <button onClick={last ? finish : () => setIndex(index + 1)} className="btn-primary w-full max-w-sm">
-          {last ? "ابدأ الآن" : "التالي"}
-        </button>
-      </div>
+      )}
     </div>
   );
 }

@@ -10,11 +10,19 @@ import {
   Package,
   Store,
   Timer,
+  User,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { MerchantUpgradeCard } from "@/components/sooqy/MerchantUpgradeCard";
 import { useAuth } from "@/lib/auth";
-import { becomeMerchant, cancelReservation, fetchMyOrders, fetchMyReservations, fetchMyRoles } from "@/lib/sooqy";
+import {
+  becomeMerchant,
+  cancelReservation,
+  fetchMyOrders,
+  fetchMyProfile,
+  fetchMyReservations,
+  fetchMyRoles,
+} from "@/lib/sooqy";
 import { useFavorites } from "@/lib/favorites";
 
 export const Route = createFileRoute("/account")({
@@ -43,8 +51,13 @@ function AccountPage() {
   const navigate = useNavigate();
   const favorites = useFavorites();
   const roles = useQuery({ queryKey: ["my-roles"], queryFn: fetchMyRoles, enabled: !!user });
-  const res = useQuery({ queryKey: ["my-reservations"], queryFn: fetchMyReservations, enabled: !!user });
+  const res = useQuery({
+    queryKey: ["my-reservations"],
+    queryFn: fetchMyReservations,
+    enabled: !!user,
+  });
   const orders = useQuery({ queryKey: ["my-orders"], queryFn: fetchMyOrders, enabled: !!user });
+  const profile = useQuery({ queryKey: ["my-profile"], queryFn: fetchMyProfile, enabled: !!user });
   const isMerchant = roles.data?.includes("merchant") ?? false;
 
   if (!ready) return null;
@@ -74,23 +87,35 @@ function AccountPage() {
     navigate({ to: "/auth", replace: true });
   };
 
-  const name = (user.user_metadata?.["full_name"] as string | undefined) ?? "مستخدم SooQy";
+  const name =
+    profile.data?.full_name ??
+    (user.user_metadata?.["full_name"] as string | undefined) ??
+    "مستخدم SooQy";
   const initial = (user.email ?? "؟").slice(0, 1).toUpperCase();
 
   return (
     <div className="space-y-5 px-4 pt-6">
       {/* بطاقة المستخدم */}
       <header className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4">
-        <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-primary text-xl font-extrabold text-primary-foreground">
-          {initial}
+        <span className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-primary text-xl font-extrabold text-primary-foreground">
+          {profile.data?.avatar_url ? (
+            <img src={profile.data.avatar_url} alt="" className="size-full object-cover" />
+          ) : (
+            initial
+          )}
         </span>
         <div className="min-w-0 flex-1">
           <h1 className="line-clamp-1 text-h3 text-foreground">{name}</h1>
           <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+          {profile.data?.phone && (
+            <p className="truncate text-[11px] text-muted-foreground" dir="ltr">
+              {profile.data.phone}
+            </p>
+          )}
         </div>
-        <button onClick={signOut} aria-label="تسجيل الخروج" className="icon-btn shrink-0">
-          <LogOut className="size-4" />
-        </button>
+        <Link to="/profile" aria-label="تعديل الملف الشخصي" className="icon-btn shrink-0">
+          <User className="size-4" />
+        </Link>
       </header>
 
       {/* الإحصائيات */}
@@ -107,11 +132,21 @@ function AccountPage() {
 
       {/* القائمة */}
       <nav className="space-y-1 rounded-2xl border border-border bg-card p-2">
+        <MenuItem to="/profile" icon={User} label="الملف الشخصي" />
         <MenuItem to="/orders" icon={Package} label="طلباتي" />
         <MenuItem to="/favorites" icon={Heart} label="المفضلة" />
         <MenuItem to="/notifications" icon={Bell} label="الإشعارات" />
         {isMerchant && <MenuItem to="/studio" icon={Store} label="التاجر — متجري" />}
         <MenuItem to="/help" icon={HelpCircle} label="المساعدة والأسئلة الشائعة" />
+        <button
+          onClick={signOut}
+          className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-danger transition hover:bg-danger-soft/60 active:bg-danger-soft"
+        >
+          <span className="flex size-9 items-center justify-center rounded-xl bg-danger-soft text-danger">
+            <LogOut className="size-4" />
+          </span>
+          <span className="flex-1 text-right">تسجيل الخروج</span>
+        </button>
       </nav>
 
       {!isMerchant && (
@@ -128,14 +163,19 @@ function AccountPage() {
       {/* الحجوزات */}
       <section className="space-y-2">
         <h2 className="text-h3 text-foreground">حجوزاتي</h2>
-        {res.isLoading && <div className="h-20 animate-pulse rounded-2xl border border-border bg-card" />}
+        {res.isLoading && (
+          <div className="h-20 animate-pulse rounded-2xl border border-border bg-card" />
+        )}
         {!res.isLoading && res.data?.length === 0 && (
           <p className="rounded-2xl border border-border bg-card p-4 text-sm text-muted-foreground">
             لا توجد حجوزات حالياً — احجز منتجًا واستلمه من المتجر.
           </p>
         )}
         {res.data?.map((r) => (
-          <div key={r.id} className="flex items-center justify-between rounded-2xl border border-border bg-card p-3">
+          <div
+            key={r.id}
+            className="flex items-center justify-between rounded-2xl border border-border bg-card p-3"
+          >
             <div className="min-w-0">
               <p className="font-mono font-bold text-primary">{r.code}</p>
               <p className="line-clamp-1 text-xs text-foreground">
@@ -186,15 +226,7 @@ function StatCard({
   return to ? <Link to={to}>{inner}</Link> : inner;
 }
 
-function MenuItem({
-  to,
-  icon: Icon,
-  label,
-}: {
-  to: string;
-  icon: typeof Package;
-  label: string;
-}) {
+function MenuItem({ to, icon: Icon, label }: { to: string; icon: typeof Package; label: string }) {
   return (
     <Link
       to={to}

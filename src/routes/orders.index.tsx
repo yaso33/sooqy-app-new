@@ -8,7 +8,7 @@ import { fetchMyOrders } from "@/lib/sooqy";
 import { EmptyState } from "@/components/sooqy/empty-state";
 import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/orders")({
+export const Route = createFileRoute("/orders/")({
   head: () => ({
     meta: [
       { title: "طلباتي — SooQy" },

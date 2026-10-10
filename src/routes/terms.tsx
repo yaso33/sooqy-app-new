@@ -39,21 +39,42 @@ function TermsPage() {
           </p>
         </section>
         <section className="space-y-1">
-          <h2 className="font-bold">4. التوصيل</h2>
+          <h2 className="font-bold">4. الاسترجاع والاستبدال</h2>
+          <p className="text-muted-foreground">
+            يحق للزبون إرجاع منتج غير مطابق للوصف أو تالف خلال 7 أيام من الاستلام، بشرط إعادة المنتج بحالته
+            الأصلية. تُعالج قيمة الاسترجاع بين الزبون والمتجر مباشرة، وتُخصم من مبيعات المتجر عند التسوية.
+          </p>
+        </section>
+        <section className="space-y-1">
+          <h2 className="font-bold">5. التوصيل</h2>
           <p className="text-muted-foreground">
             رسوم التوصيل تظهر قبل تأكيد الطلب حسب الولاية. مدة التوصيل تقديرية وقد تتأثر بالظروف.
           </p>
         </section>
         <section className="space-y-1">
-          <h2 className="font-bold">5. التجار</h2>
+          <h2 className="font-bold">6. التجار والعمولة</h2>
           <p className="text-muted-foreground">
-            التاجر مسؤول عن دقة الأسعار، توفر المخزون، وجودة المنتجات، والالتزام بالتأكيد والتسليم في المواعيد المعلنة.
+            التاجر مسؤول عن دقة الأسعار، توفر المخزون، جودة المنتجات، والالتزام بالتأكيد والتسليم في المواعيد
+            المعلنة. تطبّق SOOQY عمولة على المبيعات المؤكدة (7% افتراضيًا، قابلة للتعديل حسب الفئة)، تُحتسب من
+            قيمة البضاعة المباعة ولا تُدفع إلا بعد تأكيد المبيعات وتسويتها.
           </p>
         </section>
         <section className="space-y-1">
-          <h2 className="font-bold">6. إلغاء الخدمة</h2>
+          <h2 className="font-bold">7. المراجعات</h2>
+          <p className="text-muted-foreground">
+            المراجعات متاحة فقط لمن استلم طلبًا أو حجزًا مؤكدًا للمنتج أو المتجر، لضمان مصداقية التقييمات.
+          </p>
+        </section>
+        <section className="space-y-1">
+          <h2 className="font-bold">8. إلغاء الخدمة</h2>
           <p className="text-muted-foreground">
             يحق لنا تعليق أو إلغاء أي حساب يخالف هذه الشروط أو يساء استخدام المنصة، مع إشعار المستخدم.
+          </p>
+        </section>
+        <section className="space-y-1">
+          <h2 className="font-bold">9. الخصوصية</h2>
+          <p className="text-muted-foreground">
+            بياناتك تُعالج وفق <Link to="/privacy" className="font-semibold text-primary underline">سياسة الخصوصية</Link> الخاصة بالمنصة.
           </p>
         </section>
       </div>

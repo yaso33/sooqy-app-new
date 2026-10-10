@@ -87,7 +87,12 @@ export function ReviewSection({
           )}
         </div>
       ) : (
-        <RatingSelector onSubmit={submit} label="قيّم هذا العنصر" compact />
+        <div className="space-y-1.5">
+          <RatingSelector onSubmit={submit} label="قيّم هذا العنصر" compact />
+          <p className="text-[11px] leading-relaxed text-muted-foreground">
+            ⭐ التقييم متاح بعد استلام طلب أو حجز مؤكد لهذا العنصر.
+          </p>
+        </div>
       )}
 
       <div className="space-y-3 pt-1">

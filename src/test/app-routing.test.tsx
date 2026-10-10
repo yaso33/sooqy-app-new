@@ -19,6 +19,17 @@ describe("App routing", () => {
     const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
 
     expect(router.matchRoutes("/checkout")?.at(-1)?.routeId).toBe("/checkout");
-    expect(router.matchRoutes("/studio")?.at(-1)?.routeId).toBe("/studio");
+    expect(router.matchRoutes("/studio")?.at(-1)?.routeId).toBe("/studio/");
+  });
+
+  // حماية من انحدار: كان studio.settings.tsx وorders.$orderId.tsx متداخلين تحت
+  // ملفَي studio.tsx وorders.tsx (ولا يوجد <Outlet/> فيهما) فلا يُعرض مكوّنهما
+  // إطلاقًا عند الزيارة — تظهر الصفحة الأم فقط، فيبدو الرابط «لا يعمل».
+  it("لا يُخفي صفحات الإعدادات وتتبع الطلب تحت صفحة الأب", () => {
+    const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
+
+    expect(router.matchRoutes("/studio/settings")?.at(-1)?.routeId).toBe("/studio/settings");
+    expect(router.matchRoutes("/orders/abc")?.at(-1)?.routeId).toBe("/orders/$orderId");
+    expect(router.matchRoutes("/orders")?.at(-1)?.routeId).toBe("/orders/");
   });
 });

@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 /**
  * تطبيق هجرات SOOQY على قاعدة بيانات Supabase.
- * الاستخدام: node scripts/apply-migrations.mjs
+ * الاستخدام: node scripts/apply-migrations.mjs [--seed]
  * يحتاج DATABASE_URL في البيئة أو في ملف .env (سطر DATABASE_URL=...)
+ * --seed: يُطبّق supabase/seed.sql (بيانات تجريبية للتطوير المحلي فقط) إن كانت الجداول فارغة.
  */
 import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -75,6 +76,12 @@ async function main() {
 
   const migrationsDir = path.join(root, "supabase", "migrations");
   const files = readdirSync(migrationsDir).filter((f) => f.endsWith(".sql")).sort();
+
+  // --only=<جزء من الاسم>: تطبيق ملف واحد فقط (مثل ملف اللحاق الشامل
+  // 202610140001 على قاعدة حية) بدلًا من كل الهجرات.
+  const onlyArg = process.argv.find((a) => a.startsWith("--only="));
+  const only = onlyArg ? onlyArg.split("=")[1] : null;
+
   if (files.length === 0) {
     console.log("لا توجد هجرات");
     process.exit(0);
@@ -86,16 +93,23 @@ async function main() {
   );
 
   for (const f of files) {
+    if (only && !f.includes(only)) continue;
     await applyFile(path.join(migrationsDir, f), `هجرة ${f}`);
   }
 
-  // بيانات تجريبية (اختيارية — تُشغَّل فقط إذا كانت الجداول فارغة)
-  const seedFile = path.join(root, "supabase", "seed.sql");
-  const { rows } = await client.query("select count(*)::int as n from public.stores");
-  if (rows[0].n === 0) {
-    await applyFile(seedFile, "بيانات تجريبية (seed)");
+  // بيانات تجريبية — لا تُطبَّق تلقائيًا أبدًا (المشروع لا يحتوي بيانات وهمية في الإنتاج)
+  // للتطوير المحلي فقط: node scripts/apply-migrations.mjs --seed
+  const wantSeed = process.argv.includes("--seed");
+  if (wantSeed) {
+    const seedFile = path.join(root, "supabase", "seed.sql");
+    const { rows } = await client.query("select count(*)::int as n from public.stores");
+    if (rows[0].n === 0) {
+      await applyFile(seedFile, "بيانات تجريبية (seed — للتطوير المحلي فقط)");
+    } else {
+      console.log("⏭️  بيانات تجريبية: الجداول غير فارغة — تخطي");
+    }
   } else {
-    console.log("⏭️  بيانات تجريبية: الجداول غير فارغة — تخطي");
+    console.log("ℹ️  لم تُطبَّق البيانات التجريبية (seed). للتطوير المحلي: node scripts/apply-migrations.mjs --seed");
   }
 
   console.log("\n🎉 اكتمل تطبيق قاعدة البيانات");
