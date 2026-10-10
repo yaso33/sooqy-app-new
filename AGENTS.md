@@ -90,6 +90,16 @@
 ## بناء Release (توقيع رقمي)
 
 - **الـ workflow** (`.github/workflows/android.yml`) يبني `assembleRelease` (موقّع) ويُرفع `app-release.apk`. يشتغل على push إلى main + workflow_dispatch.
-- **التوقيع**: GitHub Secrets — `KEYSTORE_BASE64` (الـ keystore مشفّر base64)، `KEYSTORE_PASSWORD`، `KEY_ALIAS`، `KEY_PASSWORD`. `android/app/build.gradle` يقرأها من env فقط (لا كلمات مرور في الملف).
+- **التوقيع**: GitHub Secrets — `KEYSTORE_BASE64` (الـ keystore مشفّر base64)، `KEYSTORE_PASSWORD`، `KEY_ALIAS`، `KEY_PASSWORD`. `android/app/build.gradle` يقرأ محليًا من `keystore.properties` (موجود) ويعيد فك `KEYSTORE_BASE64` إلى `android/keystore/ci-release.jks` في CI (لا كلمات مرور في الملف، ولا في git).
 - **النسخة المحلية**: `android/keystore/sooqy-release.jks` + `README-credentials.txt` (متجاهلان في git — لا ترفعهما أبدًا). للبناء المحلي: `KEYSTORE_BASE64=$(base64 -w0 android/keystore/sooqy-release.jks) KEYSTORE_PASSWORD=... KEY_ALIAS=sooqy KEY_PASSWORD=... ./gradlew assembleRelease`.
 - **مهم**: احتفظ بنسخة من الـ keystore خارج المشروع — بدونه لا يمكن تحديث التطبيق بنفس التوقيع مستقبلًا.
+
+## بناء Android (بيئة aarch64/Alpine — 2026-10-10)
+
+- **البيئة aarch64 لا تستطيع تشغيل أدوات Android SDK (x86_64 فقط)**. الحل المطبّق: `qemu-x86_64` + sysroot glibc في `/tmp/sysroot` (من حزم Ubuntu libc6/libgcc-s1 amd64)، وغلافان في `/opt/android-sdk/build-tools/36.0.0/` (`aapt2` و`zipalign` → scripts تستدعي `qemu-x86_64 -L /tmp/sysroot <الأصل> "$@"`؛ الأصلان باسم `.real`). `android/gradle.properties` فيه `android.aapt2FromMavenOverride=/opt/android-sdk/build-tools/36.0.0/aapt2`.
+- **Java**: استخدم `JAVA_HOME=/usr/lib/jvm/java-17-openjdk` (الافتراضي أصبح 21 بعد تثبيته — و21 لا يعمل هنا: PaX «Failed to mark memory page as executable»).
+- **التوافق**: Capacitor 8 يطلب Java 21 → عدّل `JavaVersion.VERSION_21` إلى `VERSION_17` في 4 ملفات: `node_modules/@capacitor/android/capacitor/build.gradle`، `node_modules/@capacitor/keyboard/android/build.gradle`، `android/capacitor-cordova-android-plugins/build.gradle`، `android/app/capacitor.build.gradle`. **تحذير**: `npx cap sync/update` يعيد توليد الأخيرين إلى 21 — أعد التعديل بعدهما قبل البناء.
+- **التوقيع**: `android/keystore.properties` (مستثنى من git) يقرأه `app/build.gradle` — storeFile=keystore/sooqy-release.jks، كلمات المرور من `README-credentials.txt`.
+- **البناء**: `npm run build:mobile` (يبني dist-mobile + index.html + cap sync) ثم `cd android && JAVA_HOME=/usr/lib/jvm/java-17-openjdk ./gradlew assembleRelease --no-daemon` → `android/app/build/outputs/apk/release/app-release.apk`. التحقق: `java -jar /opt/android-sdk/build-tools/36.0.0/lib/apksigner.jar verify --print-certs <apk>`.
+- **Gradle 8.14.3**: التوزيعة في `~/.gradle/wrapper/dists` (نُزّلت يدويًا بـ wget -c لأن الـwrapper لا يستأنف الانقطاعات).
+- **تسليم الـAPK للمستخدم**: مستكشف الملفات في هذا التطبيق لا يوفر زر تنزيل — شغّل `node scripts/serve-download.mjs` (منفذ 4174) عبر start_dev_server: يعرض صفحة بزر تحميل ويقدّم `SooQy-v1.0.0.apk` من جذر المشروع مع `Content-Disposition: attachment`.

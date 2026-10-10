@@ -1,5 +1,20 @@
 apply plugin: 'com.android.application'
 
+// بيانات توقيع الإصدار — محليًا من keystore.properties (مستثنى من git)، وفي CI من متغيرات البيئة (secrets)
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file('keystore.properties')
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+} else if (System.getenv('KEYSTORE_BASE64') != null) {
+    def ciKeystore = new File("${rootProject.projectDir}/keystore/ci-release.jks")
+    ciKeystore.parentFile.mkdirs()
+    ciKeystore.bytes = System.getenv('KEYSTORE_BASE64').decodeBase64()
+    keystoreProperties['storeFile'] = ciKeystore.path
+    keystoreProperties['storePassword'] = System.getenv('KEYSTORE_PASSWORD')
+    keystoreProperties['keyAlias'] = System.getenv('KEY_ALIAS')
+    keystoreProperties['keyPassword'] = System.getenv('KEY_PASSWORD')
+}
+
 android {
     namespace = "com.sooqy.app"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -8,7 +23,7 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
-        versionName "1.0"
+        versionName "1.0.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -18,28 +33,17 @@ android {
     }
     signingConfigs {
         release {
-            // التوقيع يُقرأ حصريًا من متغيرات البيئة (GitHub Secrets في CI،
-            // أو env عند البناء المحلي) — لا كلمات مرور في الملف أبدًا.
-            def keystoreBase64 = System.getenv("KEYSTORE_BASE64")
-            if (keystoreBase64 != null && !keystoreBase64.isEmpty()) {
-                def keystoreFile = file("${rootProject.projectDir}/keystore/release.jks")
-                keystoreFile.parentFile.mkdirs()
-                keystoreFile.bytes = keystoreBase64.decodeBase64()
-                storeFile keystoreFile
-                storePassword System.getenv("KEYSTORE_PASSWORD")
-                keyAlias System.getenv("KEY_ALIAS")
-                keyPassword System.getenv("KEY_PASSWORD")
-            }
-            // بدون KEYSTORE_BASE64: لا يُطبَّق هذا signingConfig (يبني debug تلقائيًا)
+            keyAlias keystoreProperties['keyAlias']
+            keyPassword keystoreProperties['keyPassword']
+            storeFile keystoreProperties['storeFile'] ? rootProject.file(keystoreProperties['storeFile']) : null
+            storePassword keystoreProperties['storePassword']
         }
     }
     buildTypes {
         release {
+            signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-            if (System.getenv("KEYSTORE_BASE64") != null && !System.getenv("KEYSTORE_BASE64").isEmpty()) {
-                signingConfig signingConfigs.release
-            }
         }
     }
 }

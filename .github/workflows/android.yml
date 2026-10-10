@@ -30,6 +30,9 @@ jobs:
       - name: Build web + sync Capacitor
         run: node scripts/build-mobile.mjs
 
+      - name: Clean local-only Gradle overrides
+        run: sed -i '/aapt2FromMavenOverride/d' android/gradle.properties
+
       - name: Setup JDK 21
         uses: actions/setup-java@v4
         with:
