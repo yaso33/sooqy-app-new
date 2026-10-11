@@ -85,7 +85,16 @@
 
 - **النتيجة الحاسمة من اللوج**: التجمّد = **انسداد كامل لخيط JS** (فجوة نبضة 11.6 ثانية) يبدأ **لحظة `input.focus`** (قبل أي حدث keyboard) ثم **يُقتل التطبيق ويُعاد تشغيله** (تكرر `diagnostics.started`). لا تصل أحداث `keyboard.willShow/didShow` أبدًا → لوحة المفاتيح لا تكمل الفتح قبل الانسداد.
 - **الإصلاح المطبق**: `android/app/src/main/java/com/sooqy/app/MainActivity.java` — `webView.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO)` (خدمة Autofill في أجهزة OEM تستخرج بنية العرض عند التركيز وتشلّ WebView) + `android:windowSoftInputMode="adjustResize"` + `android:largeHeap="true"` في الـ manifest.
+- **⚠️ أُعيد تطبيقه 2026-10-11**: «إعادة البناء النظيفة» (16489a0) محت الإصلاح كلّه (MainActivity رجع فارغًا + حذف adjustResize/largeHeap/أذونات الموقع)، والتزم bad6ef9 وضع `adjustPan` الخاطئ. أُعيدت الأجزاء الثلاثة + أذونات الموقع. **لا تُعِد `adjustPan` أبدًا** — إضافة الكيبورد في Capacitor 8 تعتمد على insets (`WindowInsetsCompat.Type.ime()`) ولا تعمل معه (لا تصل أحداث keyboard.* ويُعاد إنشاء WebView). انتبه: `npx cap add android` (وليس sync) يعيد توليد الملفات ويمحو الإصلاحات.
 - **إن عاد التجمّد**: جرّب (أ) كيبورد مختلف (Gboard بدل كيبورد Realme الافتراضي) — يعزل مشكلة IME، (ب) تحديث Android System WebView من Play Store، (ج) جرّب نفس الحساب في متصفح الهاتف — إن عمل فالمشكلة في WebView وليست في البيانات/الصلاحيات.
+
+## OAuth عبر Google (deep link) + الأذونات (2026-10-11)
+
+- **الـ deep link**: `com.sooqy.app://auth/callback` (intent-filter في الـ Manifest + `launchMode="singleTask"`). في التطبيق الأصلي: زر Google يستخدم `skipBrowserRedirect: true` + `Browser.open` (تبويب مخصص) ثم `App.addListener("appUrlOpen")` في `src/entry-mobile.tsx` يوجّه إلى `/auth/callback`، و`auth_.callback.tsx` يتبادل الكود عبر `exchangeCodeForSession` — **لا** تعتمد على `detectSessionInUrl` (لا يعمل مع deep link لأن الصفحة لا تُعاد تحميلها في WebView).
+- **PKCE**: `flowType: 'pkce'` في `src/integrations/supabase/client.ts` — مطلوب لـ OAuth في التطبيقات الأصلية (لا توكنات في الرابط). روابط البريد/إعادة التعيين تستخدم نفس رابط العودة (`AUTH_REDIRECT_URL` في `auth.tsx` مع حماية SSR).
+- **⚠️ إعدادات Supabase**: أضف `com.sooqy.app://auth/callback` إلى Redirect URLs في لوحة Supabase Auth — بدونها يرفض Google OAuth الرابط.
+- **الأذونات** في الـ Manifest: INTERNET، الموقع (COARSE/FINE)، POST_NOTIFICATIONS، VIBRATE، CAMERA، READ_MEDIA_IMAGES/VIDEO، READ_EXTERNAL_STORAGE (maxSdk 32). طلبات وقت التشغيل تتم عبر إضافات Capacitor أو واجهات الويب.
+- **الإضافات**: `@capacitor/app` (appUrlOpen) و`@capacitor/browser` (تبويب OAuth) — مثبّتان ومُسجّلتان عبر `npx cap sync android` (يشغّله `build-mobile.mjs` تلقائيًا في CI).
 
 ## بناء Release (توقيع رقمي)
 

@@ -4,6 +4,8 @@
 import { createRoot } from "react-dom/client";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "@tanstack/react-router";
+import { App } from "@capacitor/app";
+import { Capacitor } from "@capacitor/core";
 import { getRouter } from "./router";
 
 // صائد أخطاء الشاشة أولًا (يتجاهل SSR)
@@ -59,6 +61,25 @@ setupDebugAccess();
 
 const router = getRouter();
 const queryClient = router.options.context.queryClient;
+
+// Deep link لـ OAuth (تسجيل الدخول عبر Google):
+// بعد الموافقة في المتصفح يعيد Android فتح التطبيق برابط
+// com.sooqy.app://auth/callback?code=... — نوجّهه لصفحة /auth/callback لتبادل الكود.
+if (Capacitor.isNativePlatform()) {
+  App.addListener("appUrlOpen", ({ url }) => {
+    try {
+      const u = new URL(url);
+      if (u.protocol !== "com.sooqy.app:" || u.host !== "auth" || u.pathname !== "/callback") return;
+      const search: { reset: boolean; code?: string | undefined } = {
+        reset: u.searchParams.get("reset") === "1",
+        code: u.searchParams.get("code") ?? undefined,
+      };
+      router.navigate({ to: "/auth/callback", search, replace: true });
+    } catch {
+      // رابط غير متوقع — نتجاهله
+    }
+  });
+}
 
 createRoot(document.getElementById("root")!).render(
   <AppErrorBoundary fallback={<ErrorFallback />}>

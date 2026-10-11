@@ -2,8 +2,18 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { toast } from "sonner";
+import { Browser } from "@capacitor/browser";
+import { Capacitor } from "@capacitor/core";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+
+// رابط عودة OAuth: في التطبيق الأصلي deep link مخصص يعيد فتح التطبيق،
+// وفي الويب مسار /auth/callback العادي (مع حماية من بيئة SSR بلا window).
+const AUTH_REDIRECT_URL = Capacitor.isNativePlatform()
+  ? "com.sooqy.app://auth/callback"
+  : typeof window !== "undefined"
+    ? `${window.location.origin}/auth/callback`
+    : "http://localhost/auth/callback";
 
 export const Route = createFileRoute("/auth")({
   validateSearch: (
@@ -52,7 +62,7 @@ function AuthPage() {
     try {
       if (forgot) {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/auth/callback?reset=1`,
+          redirectTo: `${AUTH_REDIRECT_URL}?reset=1`,
         });
         if (error) throw error;
         toast.success("أُرسل رابط استعادة كلمة المرور إلى بريدك ✉️");
@@ -69,7 +79,7 @@ function AuthPage() {
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: `${window.location.origin}/auth/callback`, data: { full_name: name } },
+          options: { emailRedirectTo: AUTH_REDIRECT_URL, data: { full_name: name } },
         });
         if (error) throw error;
         toast.success("تم إنشاء الحساب. يرجى تأكيد بريدك الإلكتروني ✉️");
@@ -93,11 +103,22 @@ function AuthPage() {
 
   const google = async () => {
     if (redirect) sessionStorage.setItem("sooqy-redirect", redirect);
-    const { error } = await supabase.auth.signInWithOAuth({
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: {
+        redirectTo: AUTH_REDIRECT_URL,
+        // في التطبيق الأصلي لا نوجّه WebView نفسه إلى Google؛ نفتح تبويبًا مخصصًا
+        // ونستقبل النتيجة عبر deep link (appUrlOpen).
+        skipBrowserRedirect: Capacitor.isNativePlatform(),
+      },
     });
-    if (error) toast.error("تعذر تسجيل الدخول عبر Google");
+    if (error || !data.url) {
+      toast.error("تعذر تسجيل الدخول عبر Google");
+      return;
+    }
+    if (Capacitor.isNativePlatform()) {
+      await Browser.open({ url: data.url });
+    }
   };
 
   return (

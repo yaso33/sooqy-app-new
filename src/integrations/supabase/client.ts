@@ -68,6 +68,9 @@ function createSupabaseClient() {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
+      // تدفق PKCE: مطلوب لتسجيل الدخول عبر OAuth في التطبيق الأصلي (Capacitor)
+      // عبر deep link مخصص — لا تُرسل التوكنات في الرابط أبدًا.
+      flowType: 'pkce',
     },
   });
 }

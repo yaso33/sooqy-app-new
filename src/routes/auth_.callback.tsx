@@ -1,11 +1,13 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
+import { Capacitor } from "@capacitor/core";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/auth_/callback")({
-  validateSearch: (s: Record<string, unknown>): { reset?: boolean } => ({
+  validateSearch: (s: Record<string, unknown>): { reset: boolean; code?: string | undefined } => ({
     reset: s["reset"] === "1" || s["reset"] === true || s["reset"] === "true",
+    code: typeof s["code"] === "string" ? s["code"] : undefined,
   }),
   head: () => ({
     meta: [
@@ -26,7 +28,7 @@ function safePath(p: string | null) {
 
 function CallbackPage() {
   const navigate = useNavigate();
-  const { reset } = Route.useSearch();
+  const { reset, code } = Route.useSearch();
   useEffect(() => {
     let done = false;
     const go = () => {
@@ -41,7 +43,23 @@ function CallbackPage() {
       navigate({ to: "/auth", search: { reset: true }, replace: true });
       return;
     }
-    supabase.auth.getSession().then(({ data }) => data.session && go());
+    const run = async () => {
+      // في التطبيق الأصلي لا يعيد الـ deep link تحميل الصفحة، لذا لا يلتقطه
+      // supabase-js تلقائيًا (detectSessionInUrl) — نتبادل الكود يدويًا.
+      if (code && Capacitor.isNativePlatform()) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) {
+          console.debug("[auth/callback] exchange failed", error.message);
+          navigate({ to: "/auth", replace: true });
+        } else {
+          go();
+        }
+        return;
+      }
+      // الويب: supabase-js يكتشف الكود في الرابط ويتبادله تلقائيًا.
+      supabase.auth.getSession().then(({ data }) => data.session && go());
+    };
+    void run();
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => session && go());
     const t = setTimeout(() => {
       if (!done) navigate({ to: "/auth", replace: true });
@@ -50,7 +68,7 @@ function CallbackPage() {
       sub.subscription.unsubscribe();
       clearTimeout(t);
     };
-  }, [navigate, reset]);
+  }, [navigate, reset, code]);
 
   return (
     <div className="flex min-h-[70dvh] flex-col items-center justify-center gap-3 text-center">
