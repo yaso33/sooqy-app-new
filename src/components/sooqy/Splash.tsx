@@ -20,17 +20,6 @@ export function Splash() {
     };
   }, []);
 
-  // منع التمرير أثناء ظهور الشاشة
-  useEffect(() => {
-    if (phase !== "gone") {
-      const prev = document.body.style.overflow;
-      document.body.style.overflow = "hidden";
-      return () => {
-        document.body.style.overflow = prev;
-      };
-    }
-  }, [phase]);
-
   if (phase === "gone") return null;
 
   return (

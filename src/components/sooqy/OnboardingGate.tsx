@@ -23,17 +23,6 @@ export function OnboardingGate() {
     }
   }, []);
 
-  // منع التمرير أثناء ظهور شاشات الترحيب
-  useEffect(() => {
-    if (!done) {
-      const prev = document.body.style.overflow;
-      document.body.style.overflow = "hidden";
-      return () => {
-        document.body.style.overflow = prev;
-      };
-    }
-  }, [done]);
-
   // تأخير ظهور الزر 4 ثوانٍ عند تغيير الشريحة
   useEffect(() => {
     const timer = setTimeout(() => setShowButton(true), 4000);
@@ -56,18 +45,18 @@ export function OnboardingGate() {
 
   return (
     <div className="fixed inset-0 z-[90] flex flex-col bg-background">
-      <div className="flex flex-1 relative">
+      <div className="fixed inset-0 pointer-events-none">
         <img
           src={slide.image}
           alt=""
-          className="h-full w-full object-cover absolute inset-0"
+          className="h-full w-full object-cover"
         />
         {/* تدرّج سفلي لفصل الأزرار عن محتوى الصورة */}
-        <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-background via-background/80 to-transparent pointer-events-none" />
+        <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-background via-background/80 to-transparent" />
       </div>
 
       {showButton && (
-        <div className="absolute left-0 right-0 bottom-0 flex flex-col items-center gap-3 px-6 pb-10 safe-bottom">
+        <div className="absolute left-0 right-0 bottom-0 flex flex-col items-center gap-3 px-6 pb-10 safe-bottom z-10">
           <button
             onClick={last ? finish : () => setIndex(index + 1)}
             className="btn-primary max-w-sm shadow-soft rounded-2xl px-8 py-3 text-base font-medium transition-all duration-200 hover:shadow-lift active:scale-[0.98]"
