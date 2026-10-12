@@ -1,6 +1,9 @@
 {
   "name": "tanstack_start_ts",
   "private": true,
+  "engines": {
+    "node": "22.x"
+  },
   "sideEffects": false,
   "type": "module",
   "scripts": {
