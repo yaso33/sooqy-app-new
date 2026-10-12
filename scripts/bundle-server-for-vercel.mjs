@@ -8,18 +8,39 @@ import { build } from "esbuild";
 import { mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { loadEnv } from "vite";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const outfile = join(root, "api", "_generated", "server.cjs");
 
-// تحذير مبكر: بلا متغيرات Supabase يُبنى الموقع ويعمل شكليًا لكن كل البيانات تفشل.
-const required = ["VITE_SUPABASE_URL", "VITE_SUPABASE_PUBLISHABLE_KEY", "SUPABASE_URL", "SUPABASE_PUBLISHABLE_KEY"];
-const missing = required.filter((key) => !process.env[key]);
-if (missing.length) {
+// نقرأ البيئة كما يقرأها Vite نفسه: ملفات .env + متغيرات العملية (الأخيرة تتقدّم).
+// على Vercel تكون المتغيرات في process.env، ومحليًا في .env — فحص واحد للحالتين.
+const env = loadEnv(process.env.NODE_ENV || "production", root, "");
+
+// متغيرات VITE_ تُدمَج داخل حزمة المتصفح وقت البناء. غيابها = حزمة برابط Supabase
+// فارغ، فيرمي createClient("") الخطأ "supabaseUrl is required." وينهار الموقع في
+// المتصفح (صفحة خطأ). لذلك نفشل البناء بدل نشر موقع مكسور.
+const clientRequired = ["VITE_SUPABASE_URL", "VITE_SUPABASE_PUBLISHABLE_KEY"];
+const missingClient = clientRequired.filter((key) => !env[key]);
+if (missingClient.length) {
+  console.error(
+    `\n[vercel] ❌ متغيرات مطلوبة وقت البناء ناقصة: ${missingClient.join(", ")}\n` +
+      `[vercel]    بلاها تصل حزمة المتصفح برابط Supabase فارغ ويرمي createClient\n` +
+      `[vercel]    الخطأ "supabaseUrl is required." فيظهر خطأ في المتصفح.\n` +
+      `[vercel]    الحل: Vercel → Settings → Environment Variables → أضف المتغيرات\n` +
+      `[vercel]    لكل البيئات (Production/Preview/Development) ثم أعد النشر.\n` +
+      `[vercel]    راجع DEPLOY-VERCEL.md\n`,
+  );
+  process.exit(1);
+}
+
+// متغيرات الخادم تُقرأ وقت التشغيل، فغيابها تحذير لا خطأ بناء.
+const serverRequired = ["SUPABASE_URL", "SUPABASE_PUBLISHABLE_KEY"];
+const missingServer = serverRequired.filter((key) => !env[key]);
+if (missingServer.length) {
   console.warn(
-    `\n[vercel] ⚠️  متغيرات بيئة ناقصة: ${missing.join(", ")}\n` +
-      `[vercel]    أضفها في Vercel → Settings → Environment Variables ثم أعد النشر.\n` +
-      `[vercel]    (راجع DEPLOY-VERCEL.md)\n`,
+    `\n[vercel] ⚠️  متغيرات الخادم ناقصة: ${missingServer.join(", ")}\n` +
+      `[vercel]    أضفها في Vercel → Settings → Environment Variables ثم أعد النشر.\n`,
   );
 }
 

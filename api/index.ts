@@ -74,6 +74,59 @@ function readBody(req: IncomingMessage): Promise<Uint8Array | undefined> {
   });
 }
 
+/** يخفي أي سر محتمل من رسالة الخطأ قبل عرضها. */
+function sanitizeMessage(message: string): string {
+  return message
+    .replace(/sb_[A-Za-z0-9_-]{6,}/g, "sb_•••")
+    .replace(/eyJ[A-Za-z0-9._-]{10,}/g, "eyJ•••")
+    .replace(/[A-Za-z0-9_-]{40,}/g, "•••")
+    .slice(0, 400);
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] as string);
+}
+
+/** حضور المتغيرات فقط (✓/✗) — لا تُطبع أي قيمة، فهذا آمن ومفيد للتشخيص. */
+function envPresence(): string {
+  const keys = [
+    "SUPABASE_URL",
+    "SUPABASE_PUBLISHABLE_KEY",
+    "SUPABASE_ANON_KEY",
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "SOOQY_CRON_SECRET",
+  ];
+  return keys.map((k) => `${k}=${process.env[k] ? "✓" : "✗"}`).join(" · ");
+}
+
+/** يعرض صفحة خطأ عربية مع تفاصيل تقنية منظَّفة تساعد على تحديد السبب. */
+function reportFailure(res: ServerResponse, error: unknown): void {
+  const err = error instanceof Error ? error : new Error(String(error));
+  const presence = envPresence();
+  console.error("[vercel] handler error:", err.message);
+  console.error("[vercel] stack:", err.stack);
+  console.error("[vercel] env presence:", presence);
+
+  if (res.headersSent) {
+    res.end();
+    return;
+  }
+  res.statusCode = 500;
+  res.setHeader("content-type", "text/html; charset=utf-8");
+  res.end(
+    `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8">` +
+      `<meta name="viewport" content="width=device-width, initial-scale=1">` +
+      `<title>تعذّر تحميل الصفحة</title></head>` +
+      `<body style="font-family:system-ui,sans-serif;padding:24px;line-height:1.7;background:#F8FAFC;color:#111827">` +
+      `<h1 style="color:#4F46E5">تعذّر تحميل الصفحة</h1>` +
+      `<p>حدث خطأ غير متوقع. أعد المحاولة بعد قليل.</p>` +
+      `<details style="margin-top:16px"><summary style="cursor:pointer;color:#4F46E5">تفاصيل تقنية (للدعم)</summary>` +
+      `<p style="font-size:13px"><b>الرسالة:</b> ${escapeHtml(sanitizeMessage(err.message))}</p>` +
+      `<p style="font-size:13px"><b>متغيرات البيئة:</b> ${escapeHtml(presence)}</p>` +
+      `</details></body></html>`,
+  );
+}
+
 export default async function handler(req: IncomingMessage, res: ServerResponse): Promise<void> {
   try {
     const host = (req.headers["x-forwarded-host"] as string) || (req.headers.host as string) || "localhost";
@@ -99,14 +152,16 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
 
     const response = await app.fetch(request, process.env, {});
     res.statusCode = response.status;
-    response.headers.forEach((value, key) => res.setHeader(key, value));
+    // set-cookie قد تكون عدة ترويسات، و Headers.forEach يدمجها بفاصلة فتُفسد الجلسة.
+    const headersWithCookies = response.headers as Headers & { getSetCookie?: () => string[] };
+    const setCookies = typeof headersWithCookies.getSetCookie === "function" ? headersWithCookies.getSetCookie() : [];
+    response.headers.forEach((value, key) => {
+      if (key.toLowerCase() === "set-cookie") return;
+      res.setHeader(key, value);
+    });
+    if (setCookies.length) res.setHeader("set-cookie", setCookies);
     res.end(Buffer.from(await response.arrayBuffer()));
   } catch (error) {
-    console.error("[vercel] handler error", error);
-    if (!res.headersSent) {
-      res.statusCode = 500;
-      res.setHeader("content-type", "text/html; charset=utf-8");
-    }
-    res.end("<!DOCTYPE html><html lang=\"ar\" dir=\"rtl\"><body><h1>تعذّر تحميل الصفحة</h1><p>حدث خطأ غير متوقع. أعد المحاولة بعد قليل.</p></body></html>");
+    reportFailure(res, error);
   }
 }

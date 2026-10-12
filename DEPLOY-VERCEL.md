@@ -45,6 +45,8 @@ git push
 
 ⚠️ لا تضف `DATABASE_URL` على Vercel إلا إذا كنت تستخدمه من دوال الخادم فقط (تطبيق الهجرات يتم محليًا).
 
+> **مهم جدًا**: `VITE_SUPABASE_URL` و`VITE_SUPABASE_PUBLISHABLE_KEY` تُدمجان **وقت البناء** داخل حزمة المتصفح. إن نُشر الموقع بدونهما تصل الحزمة برابط فارغ، فيرمي `createClient("")` الخطأ `supabaseUrl is required.` وينهار التطبيق في المتصفح (تبدو الصفحة كصفحة خطأ). لذلك **يفشل البناء الآن بوضوح** إن كانتا ناقصتين، بدل نشر موقع مكسور. أضِفهما قبل أول Deploy، وإن أضفتهما لاحقًا فأعد النشر (Redeploy).
+
 ---
 
 ## 4) انشر
@@ -90,6 +92,11 @@ node -e "process.env.SUPABASE_URL='https://x.supabase.co';process.env.SUPABASE_P
 | العَرَض | السبب المحتمل |
 |---|---|
 | `500` على كل الصفحات | متغير `SUPABASE_URL` أو `SUPABASE_PUBLISHABLE_KEY` غير مضبوط على Vercel |
+| صفحة خطأ/انهيار في المتصفح | `VITE_SUPABASE_URL` أو `VITE_SUPABASE_PUBLISHABLE_KEY` لم تكونا موجودتين **وقت البناء** → أعد النشر بعدهما |
 | الصفحة تعمل والأصول 404 | `outputDirectory` ليس `dist/client` |
 | فشل تسجيل دخول Google | لم تُضف Redirect URL في Supabase |
 | خطأ `Cannot find module` في الدالة | `api/_generated/server.cjs` لم يُبنَ — تأكد أن أمر البناء `npm run build:vercel` |
+
+### تشخيص سريع من المتصفح
+
+صفحة الخطأ تحتوي قسمًا **«تفاصيل تقنية (للدعم)»** يعرض رسالة الخطأ (منظَّفة من أي أسرار) و**حضور** متغيرات البيئة (`SUPABASE_URL=✓/✗`) — بلا كشف أي قيمة. افتحه وانظر أي متغير ناقص (✗)، وسُجّل الخطأ الكامل مع الـstack في تبويب **Vercel → Logs → Functions**.
