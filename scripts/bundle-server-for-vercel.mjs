@@ -17,18 +17,20 @@ const outfile = join(root, "api", "_generated", "server.cjs");
 // على Vercel تكون المتغيرات في process.env، ومحليًا في .env — فحص واحد للحالتين.
 const env = loadEnv(process.env.NODE_ENV || "production", root, "");
 
-// متغيرات VITE_ تُدمَج داخل حزمة المتصفح وقت البناء. غيابها = حزمة برابط Supabase
-// فارغ، فيرمي createClient("") الخطأ "supabaseUrl is required." وينهار الموقع في
-// المتصفح (صفحة خطأ). لذلك نفشل البناء بدل نشر موقع مكسور.
-const clientRequired = ["VITE_SUPABASE_URL", "VITE_SUPABASE_PUBLISHABLE_KEY"];
-const missingClient = clientRequired.filter((key) => !env[key]);
+// قيم المتصفح: نقبل VITE_ أو متغيرات الخادم، لأن vite.config.ts يشتق إحداها من
+// الأخرى وقت البناء. المهم أن تصل قيمة غير فارغة إلى الحزمة.
+const clientRequired = [
+  { label: "VITE_SUPABASE_URL", sources: ["VITE_SUPABASE_URL", "SUPABASE_URL"] },
+  { label: "VITE_SUPABASE_PUBLISHABLE_KEY", sources: ["VITE_SUPABASE_PUBLISHABLE_KEY", "SUPABASE_PUBLISHABLE_KEY"] },
+];
+const missingClient = clientRequired.filter((item) => !item.sources.some((key) => env[key]));
 if (missingClient.length) {
   console.error(
-    `\n[vercel] ❌ متغيرات مطلوبة وقت البناء ناقصة: ${missingClient.join(", ")}\n` +
+    `\n[vercel] ❌ متغيرات مطلوبة وقت البناء ناقصة: ${missingClient.map((item) => item.label).join(", ")}\n` +
       `[vercel]    بلاها تصل حزمة المتصفح برابط Supabase فارغ ويرمي createClient\n` +
-      `[vercel]    الخطأ "supabaseUrl is required." فيظهر خطأ في المتصفح.\n` +
-      `[vercel]    الحل: Vercel → Settings → Environment Variables → أضف المتغيرات\n` +
-      `[vercel]    لكل البيئات (Production/Preview/Development) ثم أعد النشر.\n` +
+      `[vercel]    الخطأ "Invalid supabaseUrl" فيظهر خطأ في المتصفح مع أن SSR يعمل.\n` +
+      `[vercel]    الحل: Vercel → Settings → Environment Variables → أضف SUPABASE_URL\n` +
+      `[vercel]    و SUPABASE_PUBLISHABLE_KEY لكل البيئات ثم أعد النشر (Redeploy).\n` +
       `[vercel]    راجع DEPLOY-VERCEL.md\n`,
   );
   process.exit(1);

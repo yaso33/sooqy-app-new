@@ -4,6 +4,23 @@ import tsConfigPaths from "vite-tsconfig-paths";
 import react from "@vitejs/plugin-react";
 import { fileURLToPath } from "node:url";
 
+// قيم Supabase تُدمج داخل حزمة المتصفح وقت البناء. لو بُنِي الموقع بلا متغيرات
+// VITE_ يصل الرابط فارغًا إلى المتصفح فيرمي createClient الخطأ
+// "Invalid supabaseUrl: Must be a valid HTTP or HTTPS URL" وتظهر صفحة خطأ —
+// مع أن SSR يعمل لأن الخادم يقرأ متغيرات البيئة وقت التشغيل.
+//
+// نشتق هنا قيم المتصفح من متغيرات الخادم عند غيابها. ويجب أن يتم ذلك عبر
+// process.env لا عبر `define`: يُنفَّذ هذا الملف قبل loadEnv في Vite، فيقرؤها
+// Vite كأنها متغيرات عادية فتعمل في كل صيغ الكتابة (import.meta.env.X و ["X"]).
+const deriveClientEnv = (target: string, ...sources: string[]) => {
+  if (process.env[target]) return;
+  const fallback = sources.map((key) => process.env[key]).find((value) => value);
+  if (fallback) process.env[target] = fallback;
+};
+deriveClientEnv("VITE_SUPABASE_URL", "SUPABASE_URL");
+deriveClientEnv("VITE_SUPABASE_PUBLISHABLE_KEY", "SUPABASE_PUBLISHABLE_KEY");
+deriveClientEnv("VITE_SUPABASE_PROJECT_ID", "SUPABASE_PROJECT_ID");
+
 export default defineConfig(async () => {
   const { tanstackStart } = await import("@tanstack/react-start/plugin/vite");
   return {
