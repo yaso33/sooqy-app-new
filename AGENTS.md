@@ -36,6 +36,12 @@
 - لا توجد أي حزمة `@lovable.dev/*` — الدخول عبر Google يتم بـ `supabase.auth.signInWithOAuth({ provider: "google" })` مباشرة.
 - متغيرات البيئة: `SUPABASE_URL` / `SUPABASE_PUBLISHABLE_KEY` / `SUPABASE_SERVICE_ROLE_KEY` (server) / `DATABASE_URL` / `SOOQY_CRON_SECRET` (cron، كان LOVABLE_CRON_SECRET سابقًا).
 
+## النشر على Vercel (ويب)
+
+- الدليل الكامل في `DEPLOY-VERCEL.md`. أمر بناء Vercel هو `npm run build:vercel` (لا `npm run build`)، ومجلد الإخراج `dist/client`.
+- المشروع SSR وليس ثابتًا: `scripts/bundle-server-for-vercel.mjs` يجمّع `dist/server/server.js` إلى ملف CJS واحد `api/_generated/server.cjs` (مستثنى من Git) لأن `import()` الديناميكي يفشل داخل دالة Serverless. لا تستبدل الاستيراد الساكن في `api/index.ts` باستيراد ديناميكي.
+- متغيرات البيئة المطلوبة على Vercel: `VITE_SUPABASE_URL`، `VITE_SUPABASE_PUBLISHABLE_KEY` (وقت البناء)، `SUPABASE_URL`، `SUPABASE_PUBLISHABLE_KEY`، `SUPABASE_SERVICE_ROLE_KEY` (الخادم). وتسجيل دخول Google يحتاج Redirect URL في Supabase.
+
 ## قاعدة البيانات (مطبّقة على المشروع الحي)
 
 - الهجرات تُطبَّق بـ `node scripts/apply-migrations.mjs` (تقرأ `DATABASE_URL` من `.env`، تشغّل كل ملفات `supabase/migrations/*.sql`). **لا بيانات تجريبية**: `supabase/seed.sql` لا يُطبَّق تلقائيًا أبدًا — للتطوير المحلي فقط عبر `--seed`. تنظيف صفوف seed من قاعدة حيوية: `node scripts/cleanup-demo-data.mjs` (`--dry-run` للاستعراض قبل الحذف). ملاحظة: `DATABASE_URL` غير موجودة حاليًا في `/workspace/.env` — سكربت الهجرات يحتاج إضافتها يدويًا (Connection string من Supabase).

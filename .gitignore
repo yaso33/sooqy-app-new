@@ -12,6 +12,7 @@ dist
 dist-mobile
 tmp
 dist-ssr
+api/_generated
 .output
 .vinxi
 .tanstack/**
