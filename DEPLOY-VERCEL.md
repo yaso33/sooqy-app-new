@@ -73,8 +73,10 @@ git push
 المشروع ليس موقعًا ثابتًا: صفحاته تُصيَّر على الخادم (SSR) عبر معالج `fetch(request, env, ctx)`.
 
 - **`scripts/bundle-server-for-vercel.mjs`** (بعد `vite build`): يجمّع `dist/server/server.js` في ملف **CJS واحد مكتفٍ ذاتيًا** في `api/_generated/server.cjs` (esbuild، `platform=node`، `external: node:*`). هذا يلغي كل `import()` الديناميكي الذي يفشل في بيئة Serverless ويجعل الدالة موثوقة.
-- **`api/index.ts`**: دالة Vercel (Node). تخدم أولًا أي ملف ثابت من `dist/client` (شبكة أمان)، وإلا تمرّر الطلب إلى معالج SSR وترجع ردّه كما هو.
-- **`vercel.json`**: أمر البناء، مجلد الإخراج، تضمين `dist/client` داخل الدالة (`includeFiles`)، وrewrite يوجّه المسارات غير الثابتة إلى `/api`.
+- **`api/index.ts`**: دالة Vercel (Node). تخدم أي ملف ثابت من `dist/client` (شبكة أمان)، وإلا تمرّر الطلب إلى معالج SSR وترجع ردّه كما هو.
+- **`vercel.json`**: أمر البناء، مجلد الإخراج، وإعداد الدالة، وrewrite يوجّه المسارات غير الثابتة إلى `/api`.
+
+> **ملاحظة مهمة**: على Vercel يُفحص نظام الملفات **قبل** تطبيق الـrewrites، لذا تُخدَم ملفات `dist/client` مباشرة من CDN (سريعة وبلا استدعاء دالة)، ولا تصل إلى الدالة إلا المسارات الديناميكية (SSR).
 
 ### اختبار محلي (اختياري)
 
