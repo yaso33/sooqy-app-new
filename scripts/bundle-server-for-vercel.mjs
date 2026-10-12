@@ -12,6 +12,17 @@ import { fileURLToPath } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const outfile = join(root, "api", "_generated", "server.cjs");
 
+// تحذير مبكر: بلا متغيرات Supabase يُبنى الموقع ويعمل شكليًا لكن كل البيانات تفشل.
+const required = ["VITE_SUPABASE_URL", "VITE_SUPABASE_PUBLISHABLE_KEY", "SUPABASE_URL", "SUPABASE_PUBLISHABLE_KEY"];
+const missing = required.filter((key) => !process.env[key]);
+if (missing.length) {
+  console.warn(
+    `\n[vercel] ⚠️  متغيرات بيئة ناقصة: ${missing.join(", ")}\n` +
+      `[vercel]    أضفها في Vercel → Settings → Environment Variables ثم أعد النشر.\n` +
+      `[vercel]    (راجع DEPLOY-VERCEL.md)\n`,
+  );
+}
+
 mkdirSync(dirname(outfile), { recursive: true });
 
 await build({
