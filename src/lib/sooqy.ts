@@ -684,6 +684,36 @@ export async function merchantUpdateOffer(
   if (error) throw error;
 }
 
+/**
+ * حذف منتج من المتجر نهائيًا من قاعدة البيانات (ليس إخفاءً من الواجهة فقط).
+ * - لا يُفسد سجل الطلبات: order_items يحتفظ بلقطة (product_name, unit_price).
+ * - يمنع الحذف إذا كان على المنتج حجز نشط لم ينتهِ بعد.
+ * - سياسات RLS تضمن أن التاجر لا يحذف إلا عروض متجره (نتحقق من الصفوف المحذوفة).
+ */
+export async function merchantDeleteOffer(offerId: string): Promise<void> {
+  const { data: active, error: activeError } = await supabase
+    .from("reservations")
+    .select("id")
+    .eq("offer_id", offerId)
+    .eq("status", "pending")
+    .gt("expires_at", new Date().toISOString())
+    .limit(1);
+  if (activeError) throw activeError;
+  if (active && active.length > 0) {
+    throw new Error("هذا المنتج عليه حجز نشط — انتظر انتهاءه أو ألغِه ثم أعد المحاولة.");
+  }
+
+  const { data: deleted, error } = await supabase
+    .from("store_offers")
+    .delete()
+    .eq("id", offerId)
+    .select("id");
+  if (error) throw error;
+  if (!deleted || deleted.length === 0) {
+    throw new Error("لا تملك صلاحية حذف هذا المنتج.");
+  }
+}
+
 export async function merchantConfirmAll(storeId: string) {
   const { data, error } = await supabase.rpc("merchant_confirm_all_stock", { _store_id: storeId });
   if (error) throw new Error(friendlyError(error));

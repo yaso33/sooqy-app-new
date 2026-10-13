@@ -16,7 +16,13 @@ import { useAuth } from "@/lib/auth";
 import { useBag } from "@/lib/bag";
 import { track } from "@/lib/analytics";
 import { formatDA } from "@/lib/geo";
-import { createOrderWithDelivery, getOffersByIds, primaryImage } from "@/lib/sooqy";
+import {
+  createOrderWithDelivery,
+  getOffersByIds,
+  isValidDzPhone,
+  normalizePhone,
+  primaryImage,
+} from "@/lib/sooqy";
 import { getShippingFee, type DeliveryType } from "@/lib/shipping";
 import { WilayaSelect } from "@/components/sooqy/WilayaSelect";
 import { PageHeader } from "@/components/sooqy/page-header";
@@ -48,7 +54,6 @@ function CheckoutPage() {
   const [fullName, setFullName] = useState(user?.user_metadata?.["full_name"] ?? "");
   const [phone, setPhone] = useState(user?.phone ?? "");
   const [address, setAddress] = useState("");
-  const [receipt, setReceipt] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   useEffect(() => {
     if (bag.items.length > 0) track("begin_checkout", { count: bag.items.length });
@@ -67,11 +72,16 @@ function CheckoutPage() {
   const shippingFee = wilayaId ? getShippingFee(wilayaId, deliveryType) : 0;
   const total = subtotal + shippingFee;
 
+  // منتجات لم تعد متوفرة: محذوفة من المتجر، أو غير متاحة، أو كميتها غير كافية
+  const problems = rows.filter(
+    (row) => !row.offer || !row.offer.is_available || row.offer.stock_quantity < row.quantity,
+  );
+
   const stepValid: Record<number, boolean> = {
-    0: bag.items.length > 0,
-    1: !!wilayaId && !!commune.trim() && !!fullName.trim() && !!phone.trim(),
+    0: bag.items.length > 0 && !!offers.data && problems.length === 0,
+    1: !!wilayaId && !!commune.trim() && !!fullName.trim() && isValidDzPhone(phone.trim()),
     2: true,
-    3: paymentMethod !== "baridimob" || !!receipt,
+    3: deliveryType === "desk" || !!address.trim(), // عنوان التوصيل مطلوب عند التوصيل للمنزل
   };
 
   if (!ready) return null;
@@ -107,6 +117,7 @@ function CheckoutPage() {
   }
 
   const placeOrder = async () => {
+    if (submitting) return; // منع إنشاء طلبات مكررة عند النقر المتكرر
     if (!stepValid[3]) {
       toast.error("أكمل المعلومات المطلوبة قبل إرسال الطلب.");
       return;
@@ -119,8 +130,8 @@ function CheckoutPage() {
         wilayaId!,
         commune.trim(),
         paymentMethod,
-        receipt,
-        { fullName: fullName.trim(), phone: phone.trim(), address: address.trim() },
+        null, // لا وصل دفع — الدفع عند الاستلام فقط حاليًا
+        { fullName: fullName.trim(), phone: normalizePhone(phone.trim()), address: address.trim() },
       );
       setOrderId(id);
       bag.clear();
@@ -137,7 +148,21 @@ function CheckoutPage() {
 
   const goNext = () => {
     if (!stepValid[step]) {
-      toast.error(step === 1 ? "أكمل العنوان وبياناتك أولًا." : "أكمل المعلومات المطلوبة.");
+      toast.error(
+        step === 0
+          ? offers.isLoading
+            ? "جارٍ التحقق من توفّر المنتجات — انتظر لحظة."
+            : offers.isError
+              ? "تعذّر التحقق من توفّر المنتجات — أعد المحاولة."
+              : "بعض المنتجات لم تعد متوفرة بالكمية المطلوبة — عدّل سلتك."
+          : step === 1
+            ? isValidDzPhone(phone.trim())
+              ? "أكمل العنوان وبياناتك أولًا."
+              : "أدخل رقم هاتف جزائري صحيح (يبدأ بـ 05 أو 06 أو 07 ثم 8 أرقام)."
+            : deliveryType === "home"
+              ? "أدخل عنوان التوصيل التفصيلي أولًا."
+              : "أكمل المعلومات المطلوبة.",
+      );
       return;
     }
     if (step === 3) {
@@ -193,20 +218,58 @@ function CheckoutPage() {
               <div key={row.offerId} className="flex gap-3 rounded-2xl bg-background p-3">
                 <div className="size-16 shrink-0 overflow-hidden rounded-xl bg-muted">
                   {row.offer && primaryImage(row.offer.images) && (
-                    <img src={primaryImage(row.offer.images)!} alt="" className="size-full object-cover" />
+                    <img
+                      src={primaryImage(row.offer.images)!}
+                      alt=""
+                      className="size-full object-cover"
+                    />
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="line-clamp-1 text-sm font-bold">{row.offer?.product.name ?? "..."}</p>
+                  <p className="line-clamp-1 text-sm font-bold">
+                    {row.offer?.product.name ?? "..."}
+                  </p>
                   <p className="text-xs text-muted-foreground">
                     {row.offer?.store.name} · الكمية {row.quantity}
                   </p>
                 </div>
-                <p className="text-sm font-bold">{formatDA((row.offer?.price ?? 0) * row.quantity)}</p>
+                <p className="text-sm font-bold">
+                  {formatDA((row.offer?.price ?? 0) * row.quantity)}
+                </p>
               </div>
             ))}
           </div>
-          <Link to="/bag" className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-primary">
+          {offers.isLoading && (
+            <p className="mt-3 text-xs text-muted-foreground">جارٍ التحقق من توفّر المنتجات...</p>
+          )}
+          {offers.isError && (
+            <button
+              type="button"
+              onClick={() => offers.refetch()}
+              className="mt-3 w-full rounded-xl bg-danger-soft py-2 text-xs font-bold text-danger"
+            >
+              تعذّر التحقق من التوفّر — أعِد المحاولة
+            </button>
+          )}
+          {problems.length > 0 && (
+            <div className="mt-3 rounded-2xl bg-danger-soft p-3 text-xs font-semibold leading-relaxed text-danger">
+              ⚠️ بعض المنتجات لم تعد متوفرة كما في سلتك:
+              <ul className="mt-1 list-inside list-disc">
+                {problems.map((p) => (
+                  <li key={p.offerId}>
+                    {p.offer
+                      ? `${p.offer.product.name} — المتاح: ${p.offer.stock_quantity}`
+                      : "منتج لم يعد متوفرًا في المتجر"}
+                  </li>
+                ))}
+              </ul>
+              عدّل الكميات من السلة ثم أعد المحاولة.
+            </div>
+          )}
+          <Link
+            to="/bag"
+            className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-primary"
+          >
             تعديل السلة <ChevronLeft className="size-3.5" />
           </Link>
         </section>
@@ -224,7 +287,7 @@ function CheckoutPage() {
             onChange={(e) => setCommune(e.target.value)}
             placeholder="البلدية"
             required
-            className="h-12 w-full rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-ring"
+            className="h-12 w-full rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-indigo-500"
           />
           <div className="space-y-3 rounded-2xl bg-background p-3">
             <p className="text-xs font-bold text-muted-foreground">بيانات المشتري</p>
@@ -233,7 +296,7 @@ function CheckoutPage() {
               onChange={(e) => setFullName(e.target.value)}
               placeholder="الاسم الكامل"
               required
-              className="h-12 w-full rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-ring"
+              className="h-12 w-full rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-indigo-500"
             />
             <input
               value={phone}
@@ -241,7 +304,7 @@ function CheckoutPage() {
               placeholder="رقم الهاتف"
               required
               inputMode="tel"
-              className="h-12 w-full rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-ring"
+              className="h-12 w-full rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-indigo-500"
             />
           </div>
         </section>
@@ -256,7 +319,12 @@ function CheckoutPage() {
           <div className="grid grid-cols-2 gap-2">
             {(
               [
-                { id: "home", label: "توصيل للمنزل", icon: "🏠", fee: wilayaId ? getShippingFee(wilayaId, "home") : null },
+                {
+                  id: "home",
+                  label: "توصيل للمنزل",
+                  icon: "🏠",
+                  fee: wilayaId ? getShippingFee(wilayaId, "home") : null,
+                },
                 { id: "desk", label: "استلام من المكتب", icon: "📍", fee: 0 },
               ] as const
             ).map((option) => (
@@ -266,13 +334,19 @@ function CheckoutPage() {
                 onClick={() => setDeliveryType(option.id)}
                 className={cn(
                   "rounded-2xl border p-3 text-sm font-bold transition",
-                  deliveryType === option.id ? "border-primary bg-primary-soft text-primary-soft-foreground" : "border-border bg-card text-muted-foreground",
+                  deliveryType === option.id
+                    ? "border-primary bg-primary-soft text-primary-soft-foreground"
+                    : "border-border bg-card text-muted-foreground",
                 )}
               >
                 <span className="block text-lg">{option.icon}</span>
                 {option.label}
                 <span className="mt-1 block text-[11px] font-medium opacity-70">
-                  {option.fee == null ? "يُحدد حسب الولاية" : option.fee === 0 ? "مجاني" : formatDA(option.fee)}
+                  {option.fee == null
+                    ? "يُحدد حسب الولاية"
+                    : option.fee === 0
+                      ? "مجاني"
+                      : formatDA(option.fee)}
                 </span>
               </button>
             ))}
@@ -281,7 +355,7 @@ function CheckoutPage() {
             <textarea
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              placeholder="عنوان التوصيل التفصيلي (اختياري)"
+              placeholder="عنوان التوصيل التفصيلي (مطلوب للتوصيل للمنزل)"
               rows={3}
               className="w-full rounded-xl border bg-background px-3 py-2 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
             />
@@ -301,24 +375,42 @@ function CheckoutPage() {
           </div>
           {(
             [
-              { id: "cod", label: "الدفع عند الاستلام", icon: CreditCard },
-              { id: "baridimob", label: "BaridiMob", icon: Upload },
+              { id: "cod", label: "الدفع عند الاستلام", icon: CreditCard, soon: false },
+              { id: "baridimob", label: "BaridiMob (بريدي موب)", icon: Upload, soon: true },
             ] as const
-          ).map(({ id, label, icon: Icon }) => (
+          ).map(({ id, label, icon: Icon, soon }) => (
             <button
               key={id}
               type="button"
-              onClick={() => setPaymentMethod(id)}
+              disabled={soon}
+              aria-disabled={soon}
+              onClick={() => {
+                if (soon) {
+                  toast.info("الدفع عبر بريدي موب قادم قريبًا 🔜");
+                  return;
+                }
+                setPaymentMethod(id);
+              }}
               className={cn(
                 "flex w-full items-center justify-between rounded-2xl border p-3 text-right transition",
-                paymentMethod === id ? "border-primary bg-primary-soft" : "border-border bg-card",
+                soon
+                  ? "cursor-not-allowed border-dashed border-border bg-muted/40 opacity-70"
+                  : paymentMethod === id
+                    ? "border-primary bg-primary-soft"
+                    : "border-border bg-card",
               )}
             >
               <span className="flex items-center gap-2 font-bold">
                 <Icon className="size-4" />
                 {label}
               </span>
-              {paymentMethod === id && <Check className="size-4 text-primary" />}
+              {soon ? (
+                <span className="rounded-full bg-muted px-2.5 py-1 text-[10px] font-bold text-muted-foreground">
+                  قريبًا
+                </span>
+              ) : paymentMethod === id ? (
+                <Check className="size-4 text-primary" />
+              ) : null}
             </button>
           ))}
           <div className="flex w-full items-center justify-between rounded-2xl border border-dashed p-3 text-right opacity-60">
@@ -328,18 +420,10 @@ function CheckoutPage() {
             </span>
             <span className="rounded-full bg-muted px-2.5 py-1 text-[10px] font-bold">قريبًا</span>
           </div>
-          {paymentMethod === "baridimob" && (
-            <label className="block cursor-pointer rounded-2xl border border-dashed bg-background p-3 text-center text-sm">
-              <Upload className="mx-auto mb-2 size-5 text-primary" />
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => setReceipt(e.target.files?.[0] ?? null)}
-                className="hidden"
-              />
-              {receipt ? receipt.name : "ارفع صورة وصل التحويل"}
-            </label>
-          )}
+          <p className="rounded-2xl bg-primary-soft/70 p-3 text-xs leading-relaxed text-muted-foreground">
+            متاح حاليًا <span className="font-bold text-foreground">الدفع عند الاستلام</span> فقط.
+            الدفع عبر بريدي موب والبطاقة قيد التطوير وسيُفعّل بعد اختباره.
+          </p>
         </section>
       )}
 

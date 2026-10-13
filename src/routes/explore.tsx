@@ -663,7 +663,7 @@ function Explore() {
                 <select
                   value={s.cat ?? ""}
                   onChange={(e) => set({ cat: e.target.value || undefined })}
-                  className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                  className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
                 >
                   <option value="">جميع التصنيفات</option>
                   {CATEGORIES.map((c) => (
@@ -697,7 +697,7 @@ function Explore() {
                   value={radiusText}
                   onChange={(e) => setRadiusText(e.target.value)}
                   placeholder="مثال: 10"
-                  className="h-11 w-full rounded-xl border border-input bg-background px-3 text-center text-sm outline-none focus:ring-2 focus:ring-ring"
+                  className="h-11 w-full rounded-xl border border-input bg-background px-3 text-center text-sm outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
               <div>
@@ -747,7 +747,7 @@ function Explore() {
                     value={minText}
                     onChange={(e) => setMinText(e.target.value)}
                     placeholder="من"
-                    className="h-11 w-full rounded-xl border border-input bg-background px-3 text-center text-sm outline-none focus:ring-2 focus:ring-ring"
+                    className="h-11 w-full rounded-xl border border-input bg-background px-3 text-center text-sm outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                   <span className="text-muted-foreground">—</span>
                   <input
@@ -755,7 +755,7 @@ function Explore() {
                     value={maxText}
                     onChange={(e) => setMaxText(e.target.value)}
                     placeholder="إلى"
-                    className="h-11 w-full rounded-xl border border-input bg-background px-3 text-center text-sm outline-none focus:ring-2 focus:ring-ring"
+                    className="h-11 w-full rounded-xl border border-input bg-background px-3 text-center text-sm outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
               </div>

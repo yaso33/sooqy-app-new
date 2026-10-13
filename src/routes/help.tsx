@@ -78,15 +78,7 @@ function HelpPage() {
   );
 }
 
-function FeatureCard({
-  icon,
-  title,
-  desc,
-}: {
-  icon: ReactNode;
-  title: string;
-  desc: string;
-}) {
+function FeatureCard({ icon, title, desc }: { icon: ReactNode; title: string; desc: string }) {
   return (
     <div className="flex items-start gap-3 rounded-2xl bg-card p-4 shadow-soft">
       <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -183,7 +175,7 @@ const FAQS = [
   },
   {
     q: "ما طرق الدفع المتاحة؟",
-    a: "الدفع عند الاستلام (نقدًا عند وصول الطلب) أو BaridiMob (برفع إيصال التحويل). الدفع الإلكتروني الكامل قادم قريبًا.",
+    a: "حاليًا الدفع عند الاستلام فقط (نقدًا عند وصول الطلب أو استلامه). الدفع عبر BaridiMob (بريدي موب) والدفع الإلكتروني بالبطاقة قادمان قريبًا.",
   },
   {
     q: "كم تبلغ رسوم التوصيل؟",
@@ -207,13 +199,7 @@ const FAQS = [
   },
 ];
 
-function FaqSection({
-  open,
-  onToggle,
-}: {
-  open: number | null;
-  onToggle: (i: number) => void;
-}) {
+function FaqSection({ open, onToggle }: { open: number | null; onToggle: (i: number) => void }) {
   return (
     <div className="space-y-2">
       {FAQS.map((f, i) => {

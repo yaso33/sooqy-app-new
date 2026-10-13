@@ -24,7 +24,7 @@ export function WilayaSelect({
       required={required}
       aria-label="اختيار الولاية"
       onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
-      className={cn("h-10 rounded-xl border border-input bg-card px-3 text-sm font-medium outline-none focus:ring-2 focus:ring-ring", className)}
+      className={cn("h-10 rounded-xl border border-input bg-card px-3 text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500", className)}
     >
       {allLabel !== null ? <option value="">{allLabel}</option> : <option value="" disabled>اختر الولاية</option>}
       {data.map((w) => (

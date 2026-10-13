@@ -8,6 +8,7 @@ import {
   HelpCircle,
   LogOut,
   Package,
+  Settings,
   Store,
   Timer,
   User,
@@ -136,6 +137,7 @@ function AccountPage() {
         <MenuItem to="/orders" icon={Package} label="طلباتي" />
         <MenuItem to="/favorites" icon={Heart} label="المفضلة" />
         <MenuItem to="/notifications" icon={Bell} label="الإشعارات" />
+        <MenuItem to="/settings" icon={Settings} label="الإعدادات" />
         {isMerchant && <MenuItem to="/studio" icon={Store} label="التاجر — متجري" />}
         <MenuItem to="/help" icon={HelpCircle} label="المساعدة والأسئلة الشائعة" />
         <button
@@ -179,7 +181,7 @@ function AccountPage() {
             <div className="min-w-0">
               <p className="font-mono font-bold text-primary">{r.code}</p>
               <p className="line-clamp-1 text-xs text-foreground">
-                {r.offer?.product?.name} · {r.store?.name}
+                {r.offer?.product?.name ?? "منتج محذوف"} · {r.store?.name}
               </p>
               <p className="text-[11px] text-muted-foreground">{STATUS[r.status]}</p>
             </div>

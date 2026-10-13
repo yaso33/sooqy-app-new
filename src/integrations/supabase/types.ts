@@ -169,15 +169,17 @@ export type Database = {
           description: string | null;
           id: string;
           name: string;
+          view_count: number;
         };
         Insert: {
           brand?: string | null;
-          category?: string;
+          category: string;
           created_at?: string;
           created_by?: string | null;
           description?: string | null;
           id?: string;
           name: string;
+          view_count?: number;
         };
         Update: {
           brand?: string | null;
@@ -187,6 +189,7 @@ export type Database = {
           description?: string | null;
           id?: string;
           name?: string;
+          view_count?: number;
         };
         Relationships: [];
       };
@@ -284,7 +287,7 @@ export type Database = {
           created_at: string;
           expires_at: string;
           id: string;
-          offer_id: string;
+          offer_id: string | null;
           options: Json;
           quantity: number;
           status: string;
@@ -296,7 +299,7 @@ export type Database = {
           created_at?: string;
           expires_at: string;
           id?: string;
-          offer_id: string;
+          offer_id?: string | null;
           options?: Json;
           quantity?: number;
           status?: string;
@@ -308,7 +311,7 @@ export type Database = {
           created_at?: string;
           expires_at?: string;
           id?: string;
-          offer_id?: string;
+          offer_id?: string | null;
           options?: Json;
           quantity?: number;
           status?: string;

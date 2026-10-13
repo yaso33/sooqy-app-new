@@ -3,16 +3,22 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   Check,
+  ChevronLeft,
+  Clock,
+  Eye,
   ImagePlus,
+  MapPin,
+  Package,
   PackagePlus,
   Pencil,
   Settings,
   ShieldCheck,
   ShoppingBag,
-  Sparkles,
+  Star,
   Store,
   ToggleLeft,
   ToggleRight,
+  Trash2,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -25,6 +31,7 @@ import {
   merchantConfirmAll,
   merchantConfirmReservation,
   merchantCreateStore,
+  merchantDeleteOffer,
   merchantQuickAddProduct,
   merchantReplaceOfferImage,
   merchantToggleAvailability,
@@ -35,8 +42,10 @@ import {
   primaryImage,
   type OfferFull,
 } from "@/lib/sooqy";
-import { formatDA, geoErrorMessage, useGeo } from "@/lib/geo";
+import { formatDA, geoErrorMessage, getStoreStatus, useGeo } from "@/lib/geo";
 import { WilayaSelect } from "@/components/sooqy/WilayaSelect";
+import { DirectionsButton } from "@/components/sooqy/DirectionsButton";
+import { ConfirmDialog } from "@/components/sooqy/confirm-dialog";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/studio/")({
@@ -54,6 +63,8 @@ function StudioPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [mode, setMode] = useState<"offers" | "orders">("offers");
+  const [pendingDelete, setPendingDelete] = useState<OfferFull | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [storeForm, setStoreForm] = useState({
     name: "",
     phone: "",
@@ -276,6 +287,10 @@ function StudioPage() {
     }
   };
 
+  const pendingCount =
+    (reservations.data?.filter((r) => r.status === "pending").length ?? 0) +
+    (orders.data?.filter((o) => o.order.status === "pending").length ?? 0);
+
   return (
     <div className="space-y-5 px-4 pb-24 pt-6">
       <header className="flex items-start justify-between gap-3">
@@ -288,57 +303,275 @@ function StudioPage() {
         </div>
       </header>
 
+      {/* بطاقة معلومات المتجر */}
       <section className="rounded-2xl border border-border bg-card p-4">
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="line-clamp-1 font-bold">{store.data?.name ?? "متجرك"}</p>
-            <p className="text-xs text-muted-foreground">{store.data?.commune ?? "قيد الإعداد"}</p>
+        <div className="flex items-center gap-3">
+          <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-primary-soft">
+            {store.data?.logo_url ? (
+              <img
+                src={store.data.logo_url}
+                alt={`شعار ${store.data.name}`}
+                className="size-full rounded-2xl object-cover"
+              />
+            ) : (
+              <Store className="size-6 text-primary" />
+            )}
           </div>
-          <div className="flex shrink-0 items-center gap-2">
-            {store.data?.is_verified && (
-              <span className="flex items-center gap-1 rounded-full bg-success-soft px-2 py-1 text-xs font-bold text-success">
-                <ShieldCheck className="size-3.5" /> موثق
+          <div className="min-w-0 flex-1">
+            <p className="line-clamp-1 text-base font-extrabold">{store.data?.name}</p>
+            <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+              {store.data?.commune ? `📍 ${store.data.commune}` : "الموقع قيد الإعداد"}
+            </p>
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              {(() => {
+                const st = getStoreStatus(store.data?.opening_hours);
+                return (
+                  <span
+                    className={cn(
+                      "flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold",
+                      st.isOpen ? "bg-success-soft text-success" : "bg-muted text-muted-foreground",
+                    )}
+                  >
+                    <span className={cn("size-1.5 rounded-full", st.isOpen ? "bg-success" : "bg-muted-foreground")} />
+                    {st.isOpen ? "مفتوح الآن" : "مغلق حاليًا"}
+                  </span>
+                );
+              })()}
+              {store.data?.is_verified && (
+                <span className="flex items-center gap-1 rounded-full bg-primary-soft px-2 py-0.5 text-[10px] font-bold text-primary">
+                  <ShieldCheck className="size-3" /> موثق
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="mt-3 flex gap-2">
+          <Link
+            to="/studio/settings"
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary-soft py-2 text-xs font-bold text-primary transition active:scale-95"
+          >
+            <Settings className="size-3.5" /> تخصيص المتجر
+          </Link>
+          <Link
+            to="/stores/$storeId"
+            params={{ storeId: store.data?.id ?? "" }}
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary-soft py-2 text-xs font-bold text-primary transition active:scale-95"
+          >
+            <Eye className="size-3.5" /> معاينة متجري
+          </Link>
+          {store.data?.latitude != null && store.data?.longitude != null && (
+            <DirectionsButton
+              lat={store.data.latitude}
+              lng={store.data.longitude}
+              label={store.data?.name ?? ""}
+              className="flex items-center justify-center gap-1.5 rounded-xl bg-primary-soft px-3 py-2 text-xs font-bold text-primary"
+            >
+              <MapPin className="size-3.5" /> الموقع
+            </DirectionsButton>
+          )}
+        </div>
+      </section>
+
+      {/* ملخص النشاط */}
+      <section className="grid grid-cols-2 gap-2">
+        <div className="rounded-2xl border border-border bg-card p-3">
+          <span className="flex size-9 items-center justify-center rounded-xl bg-primary-soft text-primary">
+            <Package className="size-4.5" />
+          </span>
+          <p className="mt-2 text-xl font-extrabold">{offers.data?.length ?? 0}</p>
+          <p className="text-[10px] font-bold text-muted-foreground">المنتجات</p>
+        </div>
+        <div className="rounded-2xl border border-border bg-card p-3">
+          <span className="flex size-9 items-center justify-center rounded-xl bg-primary-soft text-primary">
+            <ShoppingBag className="size-4.5" />
+          </span>
+          <p className="mt-2 text-xl font-extrabold">
+            {(orders.data?.filter((o) => o.order.status === "pending").length ?? 0) +
+              (reservations.data?.filter((r) => r.status === "pending").length ?? 0)}
+          </p>
+          <p className="text-[10px] font-bold text-muted-foreground">طلبات جديدة</p>
+        </div>
+        <div className="rounded-2xl border border-border bg-card p-3">
+          <span className="flex size-9 items-center justify-center rounded-xl bg-primary-soft text-primary">
+            <Eye className="size-4.5" />
+          </span>
+          <p className="mt-2 text-xl font-extrabold">
+            {offers.data
+              ? offers.data.reduce((sum, o) => sum + (o.product.view_count ?? 0), 0)
+              : "—"}
+          </p>
+          <p className="text-[10px] font-bold text-muted-foreground">المشاهدات</p>
+        </div>
+        <div className="rounded-2xl border border-border bg-card p-3">
+          <span className="flex size-9 items-center justify-center rounded-xl bg-primary-soft text-primary">
+            <Star className="size-4.5" />
+          </span>
+          <p className="mt-2 text-xl font-extrabold">
+            {store.data?.rating ? Number(store.data.rating).toFixed(1) : "—"}
+          </p>
+          <p className="text-[10px] font-bold text-muted-foreground">التقييم</p>
+        </div>
+      </section>
+
+      {/* إكمال إعداد المتجر */}
+      {(() => {
+        const s = store.data;
+        const items = [
+          { label: "اسم المتجر", done: !!s?.name },
+          { label: "صورة المتجر (الشعار)", done: !!s?.logo_url },
+          { label: "إضافة أول منتج", done: (offers.data?.length ?? 0) > 0 },
+          { label: "معلومات التواصل (الهاتف)", done: !!s?.phone },
+        ];
+        const done = items.filter((i) => i.done).length;
+        const pct = Math.round((done / items.length) * 100);
+        if (pct === 100) return null;
+        return (
+          <section className="rounded-2xl border border-primary/25 bg-primary-soft/40 p-4">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-sm font-extrabold text-foreground">أكمل إعداد متجرك</h2>
+              <span className="text-xs font-bold text-primary">{pct}%</span>
+            </div>
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-primary/15">
+              <div
+                className="h-full rounded-full bg-primary transition-all"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <ul className="mt-3 space-y-1.5">
+              {items.map((i) => (
+                <li key={i.label} className="flex items-center gap-2 text-xs">
+                  <span
+                    className={cn(
+                      "flex size-4 items-center justify-center rounded-full",
+                      i.done ? "bg-success text-white" : "border border-primary/40 bg-card",
+                    )}
+                  >
+                    {i.done && <Check className="size-2.5" />}
+                  </span>
+                  <span className={i.done ? "text-muted-foreground line-through" : "font-bold text-foreground"}>
+                    {i.label}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-3 flex gap-2">
+              <Link
+                to="/studio/settings"
+                className="flex-1 rounded-xl bg-primary py-2 text-center text-xs font-bold text-primary-foreground transition active:scale-95"
+              >
+                استكمال الإعداد
+              </Link>
+              <Link
+                to="/stores/$storeId"
+                params={{ storeId: s?.id ?? "" }}
+                className="flex-1 rounded-xl border border-primary/30 bg-card py-2 text-center text-xs font-bold text-primary transition active:scale-95"
+              >
+                معاينة متجري
+              </Link>
+            </div>
+          </section>
+        );
+      })()}
+
+      {/* زر الإجراء الأساسي */}
+      <button
+        onClick={() => setMode("offers")}
+        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 font-bold text-primary-foreground shadow-soft transition active:scale-[0.98]"
+      >
+        <PackagePlus className="size-5" /> إضافة منتج
+      </button>
+
+      {/* قائمة إدارة المتجر */}
+      <section className="space-y-2">
+        <h2 className="px-1 text-sm font-bold text-muted-foreground">إدارة المتجر</h2>
+        <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
+          <button
+            type="button"
+            onClick={() => setMode("offers")}
+            className="flex w-full items-center gap-3 p-3.5 text-right transition active:bg-muted/40"
+          >
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary">
+              <Package className="size-5" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-bold text-foreground">منتجاتي</span>
+              <span className="block text-xs text-muted-foreground">
+                إضافة المنتجات وتعديلها وحذفها
+              </span>
+            </span>
+            <ChevronLeft className="size-4 shrink-0 text-muted-foreground" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("orders")}
+            className="flex w-full items-center gap-3 p-3.5 text-right transition active:bg-muted/40"
+          >
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary">
+              <ShoppingBag className="size-5" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-bold text-foreground">الطلبات</span>
+              <span className="block text-xs text-muted-foreground">
+                إدارة الطلبات وتحديث حالاتها
+              </span>
+            </span>
+            {pendingCount > 0 && (
+              <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-danger text-[10px] font-bold text-white">
+                {pendingCount}
               </span>
             )}
-            <Link
-              to="/studio/settings"
-              className="flex items-center gap-1 rounded-full bg-primary-soft px-3 py-1.5 text-xs font-bold text-primary-soft-foreground transition active:scale-95"
-            >
-              <Settings className="size-3.5" /> تخصيص المتجر
-            </Link>
-          </div>
-        </div>
-        <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-          <Stat label="منتجات" value={String(offers.data?.length ?? 0)} />
-          <Stat
-            label="حجوزات معلقة"
-            value={String(reservations.data?.filter((r) => r.status === "pending").length ?? 0)}
-          />
-          <Stat label="طلبات" value={String(orders.data?.length ?? 0)} />
+            <ChevronLeft className="size-4 shrink-0 text-muted-foreground" />
+          </button>
+          <Link
+            to="/studio/settings"
+            className="flex w-full items-center gap-3 p-3.5 text-right transition active:bg-muted/40"
+          >
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary">
+              <Store className="size-5" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-bold text-foreground">معلومات المتجر</span>
+              <span className="block text-xs text-muted-foreground">
+                تعديل الاسم والوصف والصور والتصنيف
+              </span>
+            </span>
+            <ChevronLeft className="size-4 shrink-0 text-muted-foreground" />
+          </Link>
+          <Link
+            to="/studio/settings"
+            className="flex w-full items-center gap-3 p-3.5 text-right transition active:bg-muted/40"
+          >
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary">
+              <Clock className="size-5" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-bold text-foreground">الموقع وساعات العمل</span>
+              <span className="block text-xs text-muted-foreground">
+                إدارة الموقع وأوقات العمل
+              </span>
+            </span>
+            <ChevronLeft className="size-4 shrink-0 text-muted-foreground" />
+          </Link>
+          <Link
+            to="/stores/$storeId"
+            params={{ storeId: store.data?.id ?? "" }}
+            className="flex w-full items-center gap-3 p-3.5 text-right transition active:bg-muted/40"
+          >
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary">
+              <Eye className="size-5" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-bold text-foreground">معاينة متجري</span>
+              <span className="block text-xs text-muted-foreground">
+                عرض الصفحة كما يراها العميل
+              </span>
+            </span>
+            <ChevronLeft className="size-4 shrink-0 text-muted-foreground" />
+          </Link>
         </div>
       </section>
 
-      <section className="rounded-3xl bg-card p-3 shadow-soft">
-        <div className="grid grid-cols-2 gap-2">
-          <ModeButton
-            active={mode === "offers"}
-            label="المنتجات"
-            onClick={() => setMode("offers")}
-            icon={ShoppingBag}
-          />
-          <ModeButton
-            active={mode === "orders"}
-            label="الطلبات والحجوزات"
-            onClick={() => setMode("orders")}
-            icon={Sparkles}
-            badge={
-              (reservations.data?.filter((r) => r.status === "pending").length ?? 0) +
-              (orders.data?.filter((o) => o.order.status === "pending").length ?? 0)
-            }
-          />
-        </div>
-      </section>
-
+      {/* تبويب المنتجات */}
       {mode === "offers" && (
         <section className="space-y-4">
           <div className="flex gap-2">
@@ -360,7 +593,7 @@ function StudioPage() {
                 value={productForm.name}
                 onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
                 placeholder="اسم المنتج"
-                className="h-11 rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-ring"
+                className="h-11 rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-indigo-500"
               />
               <div className="grid grid-cols-2 gap-2">
                 <input
@@ -369,7 +602,7 @@ function StudioPage() {
                   placeholder="السعر دج"
                   type="number"
                   min="0"
-                  className="h-11 rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-ring"
+                  className="h-11 rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-indigo-500"
                 />
                 <input
                   value={productForm.stock}
@@ -377,14 +610,14 @@ function StudioPage() {
                   placeholder="الكمية"
                   type="number"
                   min="0"
-                  className="h-11 rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-ring"
+                  className="h-11 rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <select
                   value={productForm.category}
                   onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}
-                  className="h-11 rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-ring"
+                  className="h-11 rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-indigo-500"
                 >
                   <option value="shoes">أحذية</option>
                   <option value="phones">هواتف</option>
@@ -397,27 +630,27 @@ function StudioPage() {
                   value={productForm.brand}
                   onChange={(e) => setProductForm({ ...productForm, brand: e.target.value })}
                   placeholder="العلامة التجارية"
-                  className="h-11 rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-ring"
+                  className="h-11 rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
               <input
                 value={productForm.sizes}
                 onChange={(e) => setProductForm({ ...productForm, sizes: e.target.value })}
                 placeholder="المقاسات: S, M, L"
-                className="h-11 rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-ring"
+                className="h-11 rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-indigo-500"
               />
               <input
                 value={productForm.colors}
                 onChange={(e) => setProductForm({ ...productForm, colors: e.target.value })}
                 placeholder="الألوان: أسود، أبيض"
-                className="h-11 rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-ring"
+                className="h-11 rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-indigo-500"
               />
               <textarea
                 value={productForm.description}
                 onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
                 placeholder="وصف المنتج"
                 rows={2}
-                className="rounded-xl border border-input bg-background px-3 py-2 outline-none transition focus:ring-2 focus:ring-ring"
+                className="rounded-xl border border-input bg-background px-3 py-2 outline-none transition focus:ring-2 focus:ring-indigo-500"
               />
               <button
                 type="button"
@@ -467,7 +700,7 @@ function StudioPage() {
                     value={editForm.name}
                     onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                     placeholder="اسم المنتج"
-                    className="h-11 rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-ring"
+                    className="h-11 rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-indigo-500"
                   />
                   <div className="grid grid-cols-2 gap-2">
                     <input
@@ -476,7 +709,7 @@ function StudioPage() {
                       placeholder="السعر دج"
                       type="number"
                       min="0"
-                      className="h-11 rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-ring"
+                      className="h-11 rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-indigo-500"
                     />
                     <input
                       value={editForm.stock}
@@ -484,14 +717,14 @@ function StudioPage() {
                       placeholder="الكمية"
                       type="number"
                       min="0"
-                      className="h-11 rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-ring"
+                      className="h-11 rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-indigo-500"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <select
                       value={editForm.category}
                       onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
-                      className="h-11 rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-ring"
+                      className="h-11 rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-indigo-500"
                     >
                       <option value="shoes">أحذية</option>
                       <option value="phones">هواتف</option>
@@ -504,7 +737,7 @@ function StudioPage() {
                       value={editForm.brand}
                       onChange={(e) => setEditForm({ ...editForm, brand: e.target.value })}
                       placeholder="العلامة التجارية"
-                      className="h-11 rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-ring"
+                      className="h-11 rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-indigo-500"
                     />
                   </div>
                   <textarea
@@ -512,7 +745,7 @@ function StudioPage() {
                     onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
                     placeholder="وصف المنتج"
                     rows={2}
-                    className="rounded-xl border border-input bg-background px-3 py-2 outline-none transition focus:ring-2 focus:ring-ring"
+                    className="rounded-xl border border-input bg-background px-3 py-2 outline-none transition focus:ring-2 focus:ring-indigo-500"
                   />
                   <button
                     type="button"
@@ -590,6 +823,15 @@ function StudioPage() {
                         )}
                         {offer.is_available ? "متوفر" : "غير متوفر"}
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => setPendingDelete(offer)}
+                        className="rounded-full bg-danger-soft p-2 text-danger transition hover:bg-danger hover:text-white"
+                        aria-label="حذف المنتج"
+                        title="حذف المنتج"
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -603,6 +845,31 @@ function StudioPage() {
           </div>
         </section>
       )}
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        title="حذف المنتج"
+        message={`سيُحذف «${pendingDelete?.product.name ?? ""}» نهائيًا من متجرك ولن يظهر للعملاء بعد الآن. طلباتك السابقة تبقى محفوظة.`}
+        confirmLabel="حذف نهائي"
+        busy={deleting}
+        onCancel={() => {
+          if (!deleting) setPendingDelete(null);
+        }}
+        onConfirm={async () => {
+          if (!pendingDelete || deleting) return;
+          setDeleting(true);
+          try {
+            await merchantDeleteOffer(pendingDelete.id);
+            await qc.invalidateQueries({ queryKey: ["my-store-offers", store.data?.id] });
+            toast.success("تم حذف المنتج ✅");
+            setPendingDelete(null);
+          } catch (error) {
+            toast.error(error instanceof Error ? error.message : "تعذّر حذف المنتج.");
+          } finally {
+            setDeleting(false);
+          }
+        }}
+      />
 
       {mode === "orders" && (
         <section className="space-y-4">
@@ -633,7 +900,7 @@ function StudioPage() {
                     <div>
                       <p className="font-mono text-sm font-bold text-primary">{r.code}</p>
                       <p className="text-xs text-muted-foreground">
-                        {r.offer?.product?.name} · {r.quantity} وحدة
+                        {r.offer?.product?.name ?? "منتج محذوف"} · {r.quantity} وحدة
                       </p>
                     </div>
                     <span
@@ -816,11 +1083,13 @@ function MerchantOnboarding({
     }
     setBusy(true);
     try {
+      // الإحداثيات تُحفظ فقط إذا اكتمل الزوج (خط عرض + خط طول)
+      const hasCoords = form.latitude != null && form.longitude != null;
       await onSubmit({
         ...form,
         wilaya_id: form.wilaya_id ?? 0,
-        latitude: form.latitude,
-        longitude: form.longitude,
+        latitude: hasCoords ? form.latitude : null,
+        longitude: hasCoords ? form.longitude : null,
       });
       toast.success("تم فتح المتجر بنجاح");
     } catch (error) {
@@ -841,19 +1110,19 @@ function MerchantOnboarding({
           value={form.name}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
           placeholder="اسم المتجر"
-          className="h-11 w-full rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-ring"
+          className="h-11 w-full rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-indigo-500"
         />
         <input
           value={form.phone}
           onChange={(e) => setForm({ ...form, phone: e.target.value })}
           placeholder="هاتف المتجر"
-          className="h-11 w-full rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-ring"
+          className="h-11 w-full rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-indigo-500"
         />
         <input
           value={form.whatsapp}
           onChange={(e) => setForm({ ...form, whatsapp: e.target.value })}
           placeholder="واتساب"
-          className="h-11 w-full rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-ring"
+          className="h-11 w-full rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-indigo-500"
         />
         <WilayaSelect
           value={form.wilaya_id}
@@ -865,19 +1134,25 @@ function MerchantOnboarding({
           value={form.commune}
           onChange={(e) => setForm({ ...form, commune: e.target.value })}
           placeholder="البلدية"
-          className="h-11 w-full rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-ring"
+          className="h-11 w-full rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-indigo-500"
         />
         <textarea
           value={form.address_line}
           onChange={(e) => setForm({ ...form, address_line: e.target.value })}
           rows={3}
           placeholder="العنوان"
-          className="w-full rounded-xl border border-input bg-background px-3 py-2 outline-none transition focus:ring-2 focus:ring-ring"
+          className="w-full rounded-xl border border-input bg-background px-3 py-2 outline-none transition focus:ring-2 focus:ring-indigo-500"
         />
 
-        {/* موقع المتجر على الخريطة */}
+        {/* موقع المتجر على الخريطة — اختياري */}
         <div className="rounded-xl border border-dashed border-primary/40 bg-primary-soft/30 p-3">
-          <p className="mb-2 text-xs font-bold text-primary">📍 موقع المتجر على الخريطة</p>
+          <p className="mb-1 text-xs font-bold text-primary">
+            📍 موقع المتجر على الخريطة <span className="font-medium">(اختياري)</span>
+          </p>
+          <p className="mb-2 text-[11px] leading-relaxed text-muted-foreground">
+            يمكنك فتح المتجر الآن دون تحديد الموقع، وإضافته لاحقًا من «تخصيص المتجر». المتاجر بدون
+            موقع تعمل عادةً، لكنها لا تظهر على الخريطة.
+          </p>
           <button
             type="button"
             onClick={locate}
@@ -898,7 +1173,7 @@ function MerchantOnboarding({
               placeholder="خط العرض"
               inputMode="decimal"
               dir="ltr"
-              className="h-10 rounded-lg border border-input bg-background px-2 text-left text-xs outline-none focus:ring-2 focus:ring-ring"
+              className="h-10 rounded-lg border border-input bg-background px-2 text-left text-xs outline-none focus:ring-2 focus:ring-indigo-500"
             />
             <input
               value={form.longitude ?? ""}
@@ -911,7 +1186,7 @@ function MerchantOnboarding({
               placeholder="خط الطول"
               inputMode="decimal"
               dir="ltr"
-              className="h-10 rounded-lg border border-input bg-background px-2 text-left text-xs outline-none focus:ring-2 focus:ring-ring"
+              className="h-10 rounded-lg border border-input bg-background px-2 text-left text-xs outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
           {form.latitude != null && form.longitude != null && (
@@ -924,13 +1199,13 @@ function MerchantOnboarding({
             type="time"
             value={form.open}
             onChange={(e) => setForm({ ...form, open: e.target.value })}
-            className="h-11 rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-ring"
+            className="h-11 rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-indigo-500"
           />
           <input
             type="time"
             value={form.close}
             onChange={(e) => setForm({ ...form, close: e.target.value })}
-            className="h-11 rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-ring"
+            className="h-11 rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-indigo-500"
           />
         </div>
         <button
@@ -942,53 +1217,5 @@ function MerchantOnboarding({
         </button>
       </div>
     </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl bg-muted p-3">
-      <p className="text-xl font-bold">{value}</p>
-      <p className="text-[10px] text-muted-foreground">{label}</p>
-    </div>
-  );
-}
-
-function ModeButton({
-  active,
-  label,
-  onClick,
-  icon: Icon,
-  badge,
-}: {
-  active: boolean;
-  label: string;
-  onClick: () => void;
-  icon: typeof ShoppingBag;
-  badge?: number;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "flex items-center justify-center gap-2 rounded-2xl border py-3 text-sm font-bold",
-        active
-          ? "border-primary bg-primary text-primary-foreground"
-          : "border-border bg-card text-muted-foreground",
-      )}
-    >
-      <Icon className="size-4" />
-      {label}
-      {badge ? (
-        <span
-          className={cn(
-            "flex size-5 items-center justify-center rounded-full text-[10px] font-bold",
-            active ? "bg-primary-foreground/20 text-primary-foreground" : "bg-danger text-white",
-          )}
-        >
-          {badge}
-        </span>
-      ) : null}
-    </button>
   );
 }

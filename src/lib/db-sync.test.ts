@@ -1,4 +1,5 @@
-import { describe, it, expect } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { resetSupabaseFake } from "@/test/supabase-fake";
 import {
   fetchNearStores,
   searchProducts,
@@ -10,10 +11,22 @@ import {
   fetchWilayas,
 } from "./sooqy";
 
+// محكم (hermetic): استبدال عميل Supabase الحقيقي بالـ fake حتى لا تضرب
+// الاختبارات الشبكة الحقيقية (مصدر تعليق/فشل في CI بلا إنترنت).
+vi.mock("@/integrations/supabase/client", async () => {
+  const { fakeSupabase } = await import("@/test/supabase-fake");
+  return { supabase: fakeSupabase };
+});
+
 describe("db-sync sanity", () => {
+  beforeEach(() => {
+    resetSupabaseFake();
+  });
+
   it("fetchWilayas returns rows", async () => {
     const w = await fetchWilayas();
     expect(Array.isArray(w)).toBe(true);
+    expect(w.length).toBeGreaterThan(0);
   });
   it("fetchNearStores returns array", async () => {
     const s = await fetchNearStores(null, null, null);

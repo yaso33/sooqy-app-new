@@ -137,8 +137,13 @@ function AuthPage() {
 
       {!reset && !forgot && (
         <>
-          <button onClick={google} className="w-full rounded-2xl border bg-card py-3 font-bold shadow-soft">
-            المتابعة باستخدام Google
+          <button
+            type="button"
+            onClick={google}
+            disabled={busy}
+            className="w-full rounded-2xl border bg-card py-3 font-bold shadow-soft disabled:opacity-50"
+          >
+            {busy ? "جارٍ المعالجة..." : "المتابعة باستخدام Google"}
           </button>
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
             <span className="h-px flex-1 bg-border" /> أو <span className="h-px flex-1 bg-border" />
