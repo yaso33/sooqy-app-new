@@ -107,7 +107,7 @@ function SettingsPage() {
         <MenuCard>
           <MenuRow icon={HelpCircle} label="المساعدة والدعم" to="/help" />
           <MenuRow icon={FileText} label="الشروط وسياسة الخصوصية" to="/terms" />
-          <MenuRow icon={Info} label="حول SooQy" soon />
+          <MenuRow icon={Info} label="حول SooQy" to="/about" />
         </MenuCard>
       </section>
 
@@ -139,7 +139,7 @@ function SettingsPage() {
         confirmLabel="حذف الحساب"
         busy={signingOut}
         onCancel={() => setConfirmDelete(false)}
-        onConfirm={() => toast.info("حذف الحساب سيتاح قريبًا")}
+        onConfirm={() => supabase.auth.deleteUser().then(() => toast.success("تم حذف الحساب")).catch((e) => toast.error("فشل الحذف: " + e.message))}
       />
     </div>
   );
