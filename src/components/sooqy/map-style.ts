@@ -444,7 +444,8 @@ export const OSM_RASTER_FALLBACK = {
       ],
       tileSize: 256,
       maxzoom: 19,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     },
   },
   layers: [
@@ -458,6 +459,35 @@ export const OSM_RASTER_FALLBACK = {
         "raster-saturation": -0.35,
         "raster-contrast": -0.06,
       },
+    },
+  ],
+} as unknown as StyleSpecification;
+
+/**
+ * نمط القمر الصناعي — بلاطات Esri World Imagery (مجانية، بلا مفتاح).
+ * تُعرض الخريطة كصورة قمر صناعي حقيقية بدلاً من الخريطة المتجهية.
+ */
+export const SATELLITE_STYLE = {
+  version: 8,
+  name: "SooQy-satellite",
+  sources: {
+    satellite: {
+      type: "raster",
+      tiles: [
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      ],
+      tileSize: 256,
+      maxzoom: 19,
+      attribution:
+        '&copy; <a href="https://www.esri.com" target="_blank" rel="noreferrer">Esri</a>',
+    },
+  },
+  layers: [
+    {
+      id: "satellite",
+      type: "raster",
+      source: "satellite",
+      paint: {},
     },
   ],
 } as unknown as StyleSpecification;

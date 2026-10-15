@@ -3,7 +3,7 @@ import * as maplibregl from "maplibre-gl";
 import maplibreglWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Minus, Plus, RotateCcw } from "lucide-react";
-import { MAP_COLORS, OSM_RASTER_FALLBACK, SOOQY_VECTOR_STYLE, VECTOR_SOURCE_ID } from "./map-style";
+import { MAP_COLORS, OSM_RASTER_FALLBACK, SATELLITE_STYLE, VECTOR_SOURCE_ID } from "./map-style";
 import type { LatLng } from "@/lib/geo";
 import type { Store } from "@/lib/sooqy";
 
@@ -185,7 +185,7 @@ export default function StoreMap({
 
     const map = new maplibregl.Map({
       container: el,
-      style: SOOQY_VECTOR_STYLE as maplibregl.StyleSpecification,
+      style: SATELLITE_STYLE as maplibregl.StyleSpecification,
       center: [center.lng, center.lat] as [number, number],
       zoom: 6,
       attributionControl: { compact: true },
