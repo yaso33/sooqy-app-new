@@ -481,12 +481,29 @@ export const SATELLITE_STYLE = {
       attribution:
         '&copy; <a href="https://www.esri.com" target="_blank" rel="noreferrer">Esri</a>',
     },
+    // تسميات الأماكن فوق القمر الصناعي (مدن، مناطق، حدود) — بلاطات مرجعية من Esri بلا مفتاح
+    "satellite-labels": {
+      type: "raster",
+      tiles: [
+        "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+      ],
+      tileSize: 256,
+      maxzoom: 19,
+      attribution:
+        '&copy; <a href="https://www.esri.com" target="_blank" rel="noreferrer">Esri</a>',
+    },
   },
   layers: [
     {
       id: "satellite",
       type: "raster",
       source: "satellite",
+      paint: {},
+    },
+    {
+      id: "satellite-labels",
+      type: "raster",
+      source: "satellite-labels",
       paint: {},
     },
   ],
