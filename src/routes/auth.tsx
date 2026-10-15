@@ -6,6 +6,7 @@ import { Browser } from "@capacitor/browser";
 import { Capacitor } from "@capacitor/core";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { useTranslation } from "@/lib/i18n";
 
 // رابط عودة OAuth: في التطبيق الأصلي deep link مخصص يعيد فتح التطبيق،
 // وفي الويب مسار /auth/callback العادي (مع حماية من بيئة SSR بلا window).
@@ -45,6 +46,7 @@ function AuthPage() {
   const { redirect, reset } = Route.useSearch();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [mode, setMode] = useState<"in" | "up">("in");
   const [forgot, setForgot] = useState(false);
   const [email, setEmail] = useState("");
@@ -61,7 +63,7 @@ function AuthPage() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (reset && password !== confirm) {
-      toast.error("كلمتا المرور غير متطابقتين");
+      toast.error(t("passwords_do_not_match"));
       return;
     }
     setBusy(true);
@@ -71,12 +73,12 @@ function AuthPage() {
           redirectTo: `${AUTH_REDIRECT_URL}?reset=1`,
         });
         if (error) throw error;
-        toast.success("أُرسل رابط استعادة كلمة المرور إلى بريدك ✉️");
+        toast.success(t("reset_link_sent"));
         setForgot(false);
       } else if (reset) {
         const { error } = await supabase.auth.updateUser({ password });
         if (error) throw error;
-        toast.success("تم تحديث كلمة المرور بنجاح 🔒");
+        toast.success(t("password_updated"));
         navigate({ to: "/", replace: true });
       } else if (mode === "in") {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -88,18 +90,18 @@ function AuthPage() {
           options: { emailRedirectTo: AUTH_REDIRECT_URL, data: { full_name: name } },
         });
         if (error) throw error;
-        toast.success("تم إنشاء الحساب. يرجى تأكيد بريدك الإلكتروني ✉️");
+        toast.success(t("account_created"));
       }
     } catch (err) {
       const msg = (err as Error).message;
       // رسائل عامة لمنع كشف وجود الحسابات (account enumeration)
       if (forgot) {
-        toast.success("إذا كان البريد مسجلاً، سيصلك رابط استعادة كلمة المرور ✉️");
+        toast.success(t("email_registered"));
         setForgot(false);
       } else if (mode === "up") {
-        toast.error("تعذر إنشاء الحساب. تحقق من البيانات أو جرّب بريدًا آخر");
+        toast.error(t("account_creation_failed"));
       } else {
-        toast.error("البريد الإلكتروني أو كلمة المرور غير صحيحة");
+        toast.error(t("invalid_credentials"));
       }
       console.debug("[auth]", msg);
     } finally {
@@ -119,7 +121,7 @@ function AuthPage() {
       },
     });
     if (error || !data.url) {
-      toast.error("تعذر تسجيل الدخول عبر Google");
+      toast.error(t("error"));
       return;
     }
     if (Capacitor.isNativePlatform()) {
@@ -137,15 +139,15 @@ function AuthPage() {
         <ArrowRight className="size-5" />
       </Link>
       <div className="text-center">
-        <h1 className="text-3xl font-bold text-primary">SOOQY</h1>
+        <h1 className="text-3xl font-bold text-primary">{t("app_name")}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           {reset
-            ? "تعيين كلمة مرور جديدة"
+            ? t("reset_password")
             : forgot
-              ? "استعادة كلمة المرور"
+              ? t("forgot_password")
               : mode === "in"
-                ? "مرحباً بعودتك"
-                : "أنشئ حسابك خلال ثوانٍ"}
+                ? t("welcome_back")
+                : t("sign_up")}
         </p>
       </div>
 
@@ -157,10 +159,11 @@ function AuthPage() {
             disabled={busy}
             className="w-full rounded-2xl border bg-card py-3 font-bold shadow-soft disabled:opacity-50"
           >
-            {busy ? "جارٍ المعالجة..." : "المتابعة باستخدام Google"}
+            {busy ? t("loading") : t("sign_in")}
           </button>
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            <span className="h-px flex-1 bg-border" /> أو <span className="h-px flex-1 bg-border" />
+            <span className="h-px flex-1 bg-border" /> {t("or")}{" "}
+            <span className="h-px flex-1 bg-border" />
           </div>
         </>
       )}
@@ -171,7 +174,7 @@ function AuthPage() {
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="الاسم الكامل"
+            placeholder={t("enter_name")}
             className="h-12 w-full rounded-xl border bg-card px-3"
           />
         )}
@@ -181,14 +184,12 @@ function AuthPage() {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="البريد الإلكتروني"
+            placeholder={t("enter_email")}
             className="h-12 w-full rounded-xl border bg-card px-3"
           />
         )}
         {forgot ? (
-          <p className="text-xs leading-relaxed text-muted-foreground">
-            أدخل بريدك الإلكتروني وسنرسل لك رابطًا لإعادة تعيين كلمة المرور.
-          </p>
+          <p className="text-xs leading-relaxed text-muted-foreground">{t("verify_email")}</p>
         ) : reset ? (
           <>
             <div className="relative">
@@ -198,14 +199,14 @@ function AuthPage() {
                 minLength={6}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="كلمة المرور الجديدة (6 أحرف على الأقل)"
+                placeholder={t("enter_password")}
                 className="h-12 w-full rounded-xl border bg-card px-3 pr-10"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                aria-label={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
+                aria-label={showPassword ? t("hide_password") : t("show_password")}
               >
                 {showPassword ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
               </button>
@@ -217,14 +218,14 @@ function AuthPage() {
                 minLength={6}
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
-                placeholder="تأكيد كلمة المرور"
+                placeholder={t("confirm_password")}
                 className="h-12 w-full rounded-xl border bg-card px-3 pr-10"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                aria-label={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
+                aria-label={showPassword ? t("hide_password") : t("show_password")}
               >
                 {showPassword ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
               </button>
@@ -238,14 +239,14 @@ function AuthPage() {
               minLength={6}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="كلمة المرور (6 أحرف على الأقل)"
+              placeholder={t("enter_password")}
               className="h-12 w-full rounded-xl border bg-card px-3 pr-10"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              aria-label={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
+              aria-label={showPassword ? t("hide_password") : t("show_password")}
             >
               {showPassword ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
             </button>
@@ -256,14 +257,14 @@ function AuthPage() {
           className="w-full rounded-2xl bg-primary py-3.5 font-bold text-primary-foreground disabled:opacity-50"
         >
           {busy
-            ? "جارٍ المعالجة..."
+            ? t("loading")
             : reset
-              ? "حفظ كلمة المرور الجديدة"
+              ? t("save")
               : forgot
-                ? "إرسال رابط الاستعادة"
+                ? t("send")
                 : mode === "in"
-                  ? "تسجيل الدخول"
-                  : "إنشاء حساب"}
+                  ? t("sign_in")
+                  : t("sign_up")}
         </button>
       </form>
 
@@ -274,14 +275,14 @@ function AuthPage() {
               onClick={() => setForgot(true)}
               className="w-full text-center text-xs font-semibold text-muted-foreground underline"
             >
-              نسيت كلمة المرور؟
+              {t("forgot_password")}
             </button>
           )}
           <button
             onClick={() => setMode(mode === "in" ? "up" : "in")}
             className="w-full text-sm font-semibold text-primary"
           >
-            {mode === "in" ? "ليس لديك حساب؟ أنشئ حساباً جديداً" : "لديك حساب؟ سجّل الدخول"}
+            {mode === "in" ? t("create_account_prompt") : t("already_have_account")}
           </button>
         </>
       )}
@@ -290,18 +291,18 @@ function AuthPage() {
           onClick={() => setForgot(false)}
           className="w-full text-sm font-semibold text-primary"
         >
-          العودة لتسجيل الدخول
+          {t("sign_in")}
         </button>
       )}
 
       <p className="text-center text-[11px] leading-relaxed text-muted-foreground">
-        بالمتابعة فإنك توافق على{" "}
+        {t("terms_agreement")}{" "}
         <Link to="/terms" className="underline">
-          شروط الاستخدام
+          {t("terms")}
         </Link>{" "}
-        و
+        {t("and")}
         <Link to="/privacy" className="underline">
-          سياسة الخصوصية
+          {t("privacy")}
         </Link>
       </p>
     </div>
