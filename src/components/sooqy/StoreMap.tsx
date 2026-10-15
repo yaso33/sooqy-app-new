@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
 import maplibreglWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -116,7 +116,7 @@ function applyMarkerStyle(el: HTMLElement, active: boolean, label = ""): HTMLEle
   return el;
 }
 
-export default function StoreMap({
+const StoreMapComponent = React.memo(function StoreMapComponent({
   center,
   user,
   stores = [],
@@ -358,17 +358,17 @@ export default function StoreMap({
       .addTo(map);
   }, [user, mapReady]);
 
-  const zoomBy = (delta: number) => {
+  const zoomBy = useCallback((delta: number) => {
     const map = mapRef.current;
     if (!map) return;
     map.easeTo({ zoom: map.getZoom() + delta, duration: 280 });
-  };
+  }, []);
 
-  const recenter = () => {
+  const recenter = useCallback(() => {
     const map = mapRef.current;
     if (!map) return;
     map.flyTo({ center: [center.lng, center.lat], zoom: 14, duration: 600 });
-  };
+  }, [center.lat, center.lng]);
 
   if (error) {
     return (
@@ -442,4 +442,6 @@ export default function StoreMap({
       `}</style>
     </div>
   );
-}
+});
+
+export default StoreMapComponent;

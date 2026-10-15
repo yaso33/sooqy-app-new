@@ -33,6 +33,27 @@ export default defineConfig(async () => {
     resolve: {
       alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
     },
+    build: {
+      minify: "terser",
+      terserOptions: {
+        compress: {
+          drop_console: true,
+          drop_debugger: true,
+        },
+      },
+      rollupOptions: {
+        output: {
+          manualChunks: (id) => {
+            if (id.includes("maplibre-gl")) return "vendor-maplibre";
+            if (id.includes("@tanstack/react-query")) return "vendor-query";
+            if (id.includes("@tanstack/react-router")) return "vendor-router";
+            if (id.includes("lucide-react")) return "vendor-icons";
+            if (id.includes("sonner")) return "vendor-sonner";
+            if (id.includes("@supabase")) return "vendor-supabase";
+          },
+        },
+      },
+    },
     // لا تُضِف optimizeDeps.exclude لـ maplibre-gl: إخراجها من التجميع المسبق
     // يجعل التطوير يخدم المكتبة غير مُجمَّعة (~1000 طلب) فيتأخر ظهور الخريطة.
     // الحل الصحيح لعنوان الـ worker مطبَّق في StoreMap (setWorkerUrl).

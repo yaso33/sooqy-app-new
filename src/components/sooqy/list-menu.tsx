@@ -5,14 +5,22 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 /** عنوان قسم صغير فوق قائمة موحّدة. */
-export function SectionTitle({ children }: { children: ReactNode }) {
-  return (
-    <h2 className="px-1 pt-1 text-sm font-bold text-muted-foreground">{children}</h2>
-  );
-}
+export const SectionTitle = React.memo(function SectionTitle({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  return <h2 className="px-1 pt-1 text-sm font-bold text-muted-foreground">{children}</h2>;
+});
 
 /** بطاقة قائمة بقسمين مفصولين بحدود خفيفة (بدون ازدحام). */
-export function MenuCard({ children, className }: { children: ReactNode; className?: string }) {
+export const MenuCard = React.memo(function MenuCard({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
   return (
     <div
       className={cn(
@@ -23,7 +31,7 @@ export function MenuCard({ children, className }: { children: ReactNode; classNa
       {children}
     </div>
   );
-}
+});
 
 /**
  * صف قائمة موحّد: أيقونة في مربع ناعم + عنوان + وصف + سهم تنقل (يشير لليسار مع RTL).
@@ -31,7 +39,7 @@ export function MenuCard({ children, className }: { children: ReactNode; classNa
  * - `soon`: ميزة غير منفذة — تظهر شارة «قريبًا» ويعرض توست عند الضغط.
  * - `onClick`: إجراء مخصص (مثل تبديل تبويب).
  */
-export function MenuRow({
+export const MenuRow = React.memo(function MenuRow({
   icon: Icon,
   label,
   hint,
@@ -97,4 +105,4 @@ export function MenuRow({
       {content}
     </button>
   );
-}
+});
