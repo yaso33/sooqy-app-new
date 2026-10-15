@@ -477,20 +477,22 @@ export const SATELLITE_STYLE = {
         "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
       ],
       tileSize: 256,
-      maxzoom: 19,
+      maxzoom: 21,
       attribution:
         '&copy; <a href="https://www.esri.com" target="_blank" rel="noreferrer">Esri</a>',
     },
-    // تسميات الأماكن فوق القمر الصناعي (مدن، مناطق، حدود) — بلاطات مرجعية من Esri بلا مفتاح
+    // تسميات الأماكن فوق القمر الصناعي (مدن، مناطق، حدود) — بلاطات Wikimedia OSM Intl
+    // تُظهر الأسماء باللغة المحلية (العربية في الجزائر والدول العربية) بلا مفتاح API
     "satellite-labels": {
       type: "raster",
       tiles: [
-        "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+        "https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}.png",
+        "https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}.png@2x",
       ],
       tileSize: 256,
       maxzoom: 19,
       attribution:
-        '&copy; <a href="https://www.esri.com" target="_blank" rel="noreferrer">Esri</a>',
+        '&copy; <a href="https://wikimediafoundation.org/" target="_blank" rel="noreferrer">Wikimedia</a> · &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors',
     },
   },
   layers: [
@@ -498,7 +500,9 @@ export const SATELLITE_STYLE = {
       id: "satellite",
       type: "raster",
       source: "satellite",
-      paint: {},
+      paint: {
+        "raster-resampling": "bilinear",
+      },
     },
     {
       id: "satellite-labels",
