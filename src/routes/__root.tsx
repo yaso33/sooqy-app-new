@@ -83,7 +83,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
-      { rel: "stylesheet", href: appCss },
+      // appCss يرجع "" في بيئة الاختبار فقط — تجاهله حتى لا يُرسم <link> بـhref فارغ
+      ...(appCss ? [{ rel: "stylesheet", href: appCss }] : []),
       { rel: "icon", href: "/icon-192.png", type: "image/png" },
       { rel: "apple-touch-icon", href: "/icon-192.png" },
       { rel: "manifest", href: "/manifest.webmanifest" },

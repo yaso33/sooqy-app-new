@@ -116,7 +116,7 @@ function UserSection() {
         desc="من صفحة حسابك يمكنك التحول إلى تاجر وفتح متجرك الخاص بنقرة واحدة."
       />
       <Link
-        to="/account"
+        to="/profile"
         className="block rounded-2xl bg-primary py-3 text-center text-sm font-bold text-primary-foreground shadow-soft"
       >
         اذهب إلى حسابي
@@ -233,7 +233,7 @@ function FaqSection({ open, onToggle }: { open: number | null; onToggle: (i: num
 
 function QuickLinks() {
   const links = [
-    { to: "/account", label: "حسابي", icon: <User className="size-5" /> },
+    { to: "/profile", label: "حسابي", icon: <User className="size-5" /> },
     { to: "/studio", label: "استوديو التاجر", icon: <Store className="size-5" /> },
     { to: "/bag", label: "سلتي", icon: <ShoppingBag className="size-5" /> },
     { to: "/explore", label: "البحث", icon: <Search className="size-5" /> },

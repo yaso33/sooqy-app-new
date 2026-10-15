@@ -43,6 +43,18 @@ import {
   type OfferFull,
 } from "@/lib/sooqy";
 import { formatDA, geoErrorMessage, getStoreStatus, useGeo } from "@/lib/geo";
+import {
+  DEFAULT_CATEGORY_ID,
+  MAIN_CATEGORIES,
+  OTHER_CATEGORIES,
+  childrenOf,
+  parentOf,
+  resolveCategoryId,
+} from "@/lib/taxonomy";
+import {
+  MainCategoryPicker,
+  SubcategoryMultiSelect,
+} from "@/components/sooqy/category-tiles";
 import { WilayaSelect } from "@/components/sooqy/WilayaSelect";
 import { DirectionsButton } from "@/components/sooqy/DirectionsButton";
 import { ConfirmDialog } from "@/components/sooqy/confirm-dialog";
@@ -76,12 +88,14 @@ function StudioPage() {
     close: "18:00",
     latitude: null as number | null,
     longitude: null as number | null,
+    category: null as string | null,
+    subcategories: [] as string[],
   });
   const [productForm, setProductForm] = useState({
     name: "",
     price: "",
     stock: "",
-    category: "shoes",
+    category: DEFAULT_CATEGORY_ID,
     brand: "",
     description: "",
     sizes: "",
@@ -97,7 +111,7 @@ function StudioPage() {
     name: "",
     price: "",
     stock: "",
-    category: "shoes",
+    category: DEFAULT_CATEGORY_ID,
     brand: "",
     description: "",
   });
@@ -229,7 +243,7 @@ function StudioPage() {
         name: "",
         price: "",
         stock: "",
-        category: "shoes",
+        category: DEFAULT_CATEGORY_ID,
         brand: "",
         description: "",
         sizes: "",
@@ -613,26 +627,16 @@ function StudioPage() {
                   className="h-11 rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <select
-                  value={productForm.category}
-                  onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}
-                  className="h-11 rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="shoes">أحذية</option>
-                  <option value="phones">هواتف</option>
-                  <option value="cosmetics">مستحضرات التجميل</option>
-                  <option value="clothes">ملابس</option>
-                  <option value="capsules">كبسولات</option>
-                  <option value="other">أخرى</option>
-                </select>
-                <input
-                  value={productForm.brand}
-                  onChange={(e) => setProductForm({ ...productForm, brand: e.target.value })}
-                  placeholder="العلامة التجارية"
-                  className="h-11 rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
+              <CategorySelect
+                value={productForm.category}
+                onChange={(category) => setProductForm({ ...productForm, category })}
+              />
+              <input
+                value={productForm.brand}
+                onChange={(e) => setProductForm({ ...productForm, brand: e.target.value })}
+                placeholder="العلامة التجارية"
+                className="h-11 w-full rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-indigo-500"
+              />
               <input
                 value={productForm.sizes}
                 onChange={(e) => setProductForm({ ...productForm, sizes: e.target.value })}
@@ -720,26 +724,16 @@ function StudioPage() {
                       className="h-11 rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-indigo-500"
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <select
-                      value={editForm.category}
-                      onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
-                      className="h-11 rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-indigo-500"
-                    >
-                      <option value="shoes">أحذية</option>
-                      <option value="phones">هواتف</option>
-                      <option value="cosmetics">مستحضرات التجميل</option>
-                      <option value="clothes">ملابس</option>
-                      <option value="capsules">كبسولات</option>
-                      <option value="other">أخرى</option>
-                    </select>
-                    <input
-                      value={editForm.brand}
-                      onChange={(e) => setEditForm({ ...editForm, brand: e.target.value })}
-                      placeholder="العلامة التجارية"
-                      className="h-11 rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-indigo-500"
-                    />
-                  </div>
+                  <CategorySelect
+                    value={editForm.category}
+                    onChange={(category) => setEditForm({ ...editForm, category })}
+                  />
+                  <input
+                    value={editForm.brand}
+                    onChange={(e) => setEditForm({ ...editForm, brand: e.target.value })}
+                    placeholder="العلامة التجارية"
+                    className="h-11 w-full rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-indigo-500"
+                  />
                   <textarea
                     value={editForm.description}
                     onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
@@ -1052,7 +1046,69 @@ type StoreForm = {
   close: string;
   latitude: number | null;
   longitude: number | null;
+  category: string | null;
+  subcategories: string[];
 };
+
+const CATEGORY_FIELD_CLS =
+  "h-11 w-full rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-indigo-500";
+
+/**
+ * منتقي تصنيف ثنائي المستوى: تصنيف رئيسي (أو تصنيف من «تصنيفات أخرى») ثم الفئة الفرعية.
+ * ما يُخزَّن في `products.category` هو الفئة الفرعية، أو التصنيف الرئيسي إن لم تكن له فرعيات.
+ */
+function CategorySelect({ value, onChange }: { value: string; onChange: (id: string) => void }) {
+  const resolved = resolveCategoryId(value);
+  const main = parentOf(resolved)?.id ?? MAIN_CATEGORIES[0]!.id;
+  const subs = childrenOf(main);
+  const subValue = subs.some((c) => c.id === resolved) ? resolved : (subs[0]?.id ?? main);
+
+  return (
+    <div className="space-y-1.5">
+      <div className="grid grid-cols-2 gap-2">
+        <select
+          value={main}
+          aria-label="التصنيف الرئيسي"
+          onChange={(e) => {
+            const next = e.target.value;
+            onChange(childrenOf(next)[0]?.id ?? next);
+          }}
+          className={CATEGORY_FIELD_CLS}
+        >
+          {MAIN_CATEGORIES.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.label}
+            </option>
+          ))}
+          <optgroup label="تصنيفات أخرى">
+            {OTHER_CATEGORIES.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.label}
+              </option>
+            ))}
+          </optgroup>
+        </select>
+        <select
+          value={subValue}
+          aria-label="الفئة الفرعية"
+          onChange={(e) => onChange(e.target.value)}
+          className={CATEGORY_FIELD_CLS}
+        >
+          {subs.length === 0 ? (
+            <option value={main}>لا توجد فئات فرعية</option>
+          ) : (
+            subs.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.label}
+              </option>
+            ))
+          )}
+        </select>
+      </div>
+      <p className="text-[11px] text-muted-foreground">تصنيف المنتج مستقل عن تصنيف متجرك.</p>
+    </div>
+  );
+}
 
 function MerchantOnboarding({
   onSubmit,
@@ -1079,6 +1135,10 @@ function MerchantOnboarding({
   const submit = async () => {
     if (!form.name || !form.phone || !form.wilaya_id || !form.commune || !form.address_line) {
       toast.error("املأ بيانات المتجر المطلوبة.");
+      return;
+    }
+    if (!form.category) {
+      toast.error("اختر التصنيف الرئيسي لمتجرك.");
       return;
     }
     setBusy(true);
@@ -1143,6 +1203,39 @@ function MerchantOnboarding({
           placeholder="العنوان"
           className="w-full rounded-xl border border-input bg-background px-3 py-2 outline-none transition focus:ring-2 focus:ring-indigo-500"
         />
+
+        {/* تصنيف المتجر: رئيسي واحد على الأقل + فئات فرعية اختيارية */}
+        <div className="space-y-3 rounded-2xl border border-border bg-background/60 p-3">
+          <div>
+            <p className="text-sm font-bold text-foreground">تصنيف المتجر</p>
+            <p className="text-[11px] text-muted-foreground">
+              اختر التصنيف الرئيسي لنشاطك، ثم الفئات الفرعية التي تبيعها.
+            </p>
+          </div>
+          <MainCategoryPicker
+            value={form.category}
+            onChange={(category) =>
+              setForm((f) => ({ ...f, category, subcategories: f.subcategories.filter((x) => childrenOf(category).some((c) => c.id === x)) }))
+            }
+          />
+          {form.category && (
+            <div className="space-y-2">
+              <p className="text-xs font-bold text-muted-foreground">الفئات الفرعية (اختيارية)</p>
+              <SubcategoryMultiSelect
+                categoryId={form.category}
+                value={form.subcategories}
+                onToggle={(id) =>
+                  setForm((f) => ({
+                    ...f,
+                    subcategories: f.subcategories.includes(id)
+                      ? f.subcategories.filter((x) => x !== id)
+                      : [...f.subcategories, id],
+                  }))
+                }
+              />
+            </div>
+          )}
+        </div>
 
         {/* موقع المتجر على الخريطة — اختياري */}
         <div className="rounded-xl border border-dashed border-primary/40 bg-primary-soft/30 p-3">

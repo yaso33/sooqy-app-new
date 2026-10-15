@@ -214,6 +214,8 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    /* تمرير ناعم: كل scrollIntoView/scrollTo وروابط المرساة داخل التطبيق */
+    scroll-behavior: smooth;
   }
   body {
     background-color: var(--color-background);

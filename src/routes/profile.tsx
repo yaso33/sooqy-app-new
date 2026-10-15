@@ -8,6 +8,7 @@ import {
   MapPin,
   Package,
   Pencil,
+  Phone,
   Settings,
   Store,
   User,
@@ -27,9 +28,9 @@ import {
   updateMyProfile,
   uploadImageToBucket,
 } from "@/lib/sooqy";
-import { WilayaSelect } from "@/components/sooqy/WilayaSelect";
+import { WilayaSelect, wilayasQuery } from "@/components/sooqy/WilayaSelect";
 import { PageHeader } from "@/components/sooqy/page-header";
-import { MenuCard, MenuRow, SectionTitle } from "@/components/sooqy/list-menu";
+import { SectionTitle } from "@/components/sooqy/list-menu";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({
@@ -48,6 +49,7 @@ function ProfilePage() {
   const profile = useQuery({ queryKey: ["my-profile"], queryFn: fetchMyProfile, enabled: !!user });
   const orders = useQuery({ queryKey: ["my-orders"], queryFn: fetchMyOrders, enabled: !!user });
   const myStore = useQuery({ queryKey: ["my-store"], queryFn: fetchMyStore, enabled: !!user });
+  const wilayas = useQuery(wilayasQuery);
   const favorites = useFavorites();
 
   const [fullName, setFullName] = useState("");
@@ -58,6 +60,7 @@ function ProfilePage() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [editing, setEditing] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
 
@@ -132,7 +135,7 @@ function ProfilePage() {
       } else {
         toast.success("تم حفظ الملف الشخصي ✅");
       }
-      navigate({ to: "/account" });
+      navigate({ to: "/settings" });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "تعذر الحفظ.");
     } finally {
@@ -140,17 +143,41 @@ function ProfilePage() {
     }
   };
 
-  const scrollToForm = () => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const scrollToForm = () => {
+    // scrollIntoView غير متاح في بعض بيئات WebView القديمة — نتجاهله بهدوء
+    formRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+  };
 
   return (
     <div className="mx-auto max-w-xl space-y-5 px-4 pb-24 pt-6">
-      <PageHeader title="الملف الشخصي" subtitle="حسابك وبياناتك في مكان واحد" back="/account" />
+      <PageHeader
+        title="الملف الشخصي"
+        subtitle="حسابك وبياناتك في مكان واحد"
+        action={
+          <div className="inline-flex shrink-0 items-center gap-2">
+            <Link
+              to="/studio/settings"
+              aria-label="متجري"
+              className="inline-flex shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-soft size-10 transition hover:bg-primary/90 active:scale-95"
+            >
+              <Store className="size-4.5" />
+            </Link>
+            <Link
+              to="/settings"
+              aria-label="الإعدادات"
+              className="inline-flex shrink-0 items-center justify-center rounded-full bg-card border border-border shadow-soft size-10 transition hover:bg-neutral-100 active:scale-95"
+            >
+              <Settings className="size-4.5" />
+            </Link>
+          </div>
+        }
+      />
 
       {/* رأس الصفحة: الصورة + الاسم + البريد + زر التعديل + شارة الحالة */}
-      <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
-        <div className="flex items-center gap-4">
+      <div className="rounded-3xl border border-border bg-card p-6 md:p-8 shadow-soft">
+        <div className="flex flex-col md:flex-row items-start md:items-center gap-4 md:gap-6">
           <div className="relative shrink-0">
-            <div className="flex size-20 items-center justify-center overflow-hidden rounded-full bg-primary-soft">
+            <div className="flex size-24 md:size-28 items-center justify-center overflow-hidden rounded-full bg-primary-soft">
               {avatarPreview ? (
                 <img
                   src={avatarPreview}
@@ -158,7 +185,7 @@ function ProfilePage() {
                   className="size-full rounded-full object-cover"
                 />
               ) : (
-                <span className="text-3xl font-extrabold text-primary">
+                <span className="text-4xl md:text-5xl font-extrabold text-primary">
                   {(displayName || initial).trim()[0]}
                 </span>
               )}
@@ -166,10 +193,10 @@ function ProfilePage() {
             <button
               type="button"
               onClick={() => avatarInputRef.current?.click()}
-              className="absolute -bottom-1 -left-1 flex size-7 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-soft transition active:scale-95"
+              className="absolute -bottom-1 -left-1 flex size-8 md:size-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-soft transition active:scale-95"
               aria-label="تغيير الصورة الشخصية"
             >
-              <Camera className="size-3.5" />
+              <Camera className="size-4 md:size-4.5" />
             </button>
             <input
               ref={avatarInputRef}
@@ -184,34 +211,60 @@ function ProfilePage() {
             />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-lg font-extrabold text-foreground">{displayName}</p>
-            <p className="truncate text-sm text-muted-foreground">{user.email}</p>
-            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+            <p className="truncate text-xl md:text-2xl font-extrabold text-foreground">
+              {displayName}
+            </p>
+            <p className="truncate text-base text-muted-foreground">{user.email}</p>
+            <div className="mt-3 flex flex-col gap-1">
+              {profile.data?.phone && (
+                <div className="flex items-center gap-2 text-sm text-foreground">
+                  <Phone className="size-4 shrink-0 text-muted-foreground" />
+                  <span className="truncate">{profile.data.phone}</span>
+                </div>
+              )}
+              {(profile.data?.commune || profile.data?.wilaya_id != null) && (
+                <div className="flex items-center gap-2 text-sm text-foreground">
+                  <MapPin className="size-4 shrink-0 text-muted-foreground" />
+                  <span className="truncate">
+                    {profile.data.commune ?? ""}
+                    {profile.data.commune && profile.data.wilaya_id != null ? "، " : ""}
+                    {wilayas.data?.find((w) => w.id === profile.data?.wilaya_id)?.name_ar ??
+                      (profile.data.wilaya_id != null
+                        ? String(profile.data.wilaya_id).padStart(2, "0")
+                        : "")}
+                  </span>
+                </div>
+              )}
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
               {profile.data?.is_phone_verified && (
-                <span className="flex items-center gap-1 rounded-full bg-success-soft px-2 py-0.5 text-[10px] font-bold text-success">
-                  <BadgeCheck className="size-3" /> هاتف موثّق
+                <span className="flex items-center gap-1.5 rounded-full bg-success-soft px-2.5 py-1 text-xs font-bold text-success">
+                  <BadgeCheck className="size-3.5" /> هاتف موثّق
                 </span>
               )}
               {myStore.data && (
-                <span className="flex items-center gap-1 rounded-full bg-primary-soft px-2 py-0.5 text-[10px] font-bold text-primary">
-                  <Store className="size-3" /> تاجر
+                <span className="flex items-center gap-1.5 rounded-full bg-primary-soft px-2.5 py-1 text-xs font-bold text-primary">
+                  <Store className="size-3.5" /> تاجر
                 </span>
               )}
             </div>
           </div>
           <button
             type="button"
-            onClick={scrollToForm}
-            className="flex shrink-0 items-center gap-1 rounded-full bg-primary-soft px-3 py-1.5 text-xs font-bold text-primary transition active:scale-95"
+            onClick={() => setEditing(!editing)}
+            className="mt-4 md:mt-0 flex shrink-0 items-center gap-1.5 rounded-full bg-primary-soft px-4 py-2 text-sm font-bold text-primary transition active:scale-95"
           >
-            <Pencil className="size-3.5" /> تعديل
+            <Pencil className="size-4" /> {editing ? "إلغاء" : "تعديل"}
           </button>
         </div>
       </div>
 
       {/* بطاقات الإحصائيات */}
       <div className="grid grid-cols-3 gap-2">
-        <Link to="/orders" className="rounded-2xl border border-border bg-card p-3 text-center transition active:scale-[0.97]">
+        <Link
+          to="/orders"
+          className="rounded-2xl border border-border bg-card p-3 text-center transition active:scale-[0.97]"
+        >
           <span className="mx-auto flex size-9 items-center justify-center rounded-xl bg-primary-soft text-primary">
             <Package className="size-4.5" />
           </span>
@@ -220,7 +273,10 @@ function ProfilePage() {
           </p>
           <p className="text-[10px] font-bold text-muted-foreground">طلباتي</p>
         </Link>
-        <Link to="/favorites" className="rounded-2xl border border-border bg-card p-3 text-center transition active:scale-[0.97]">
+        <Link
+          to="/favorites"
+          className="rounded-2xl border border-border bg-card p-3 text-center transition active:scale-[0.97]"
+        >
           <span className="mx-auto flex size-9 items-center justify-center rounded-xl bg-primary-soft text-primary">
             <Heart className="size-4.5" />
           </span>
@@ -236,84 +292,69 @@ function ProfilePage() {
         </div>
       </div>
 
-      {/* قائمة الحساب */}
-      <section className="space-y-2">
-        <SectionTitle>الحساب</SectionTitle>
-        <MenuCard>
-          <MenuRow icon={Package} label="طلباتي" hint="متابعة الطلبات وحالاتها" to="/orders" />
-          <MenuRow icon={Heart} label="المنتجات المفضلة" hint="العناصر التي حفظتها" to="/favorites" />
-          <MenuRow icon={MapPin} label="عناويني" hint="إدارة عناوين التوصيل" soon />
-          {myStore.data && (
-            <MenuRow icon={Store} label="متجري" hint="إدارة المتجر والمنتجات" to="/studio" />
-          )}
-          <MenuRow icon={Settings} label="الإعدادات" hint="التحكم في الحساب والتفضيلات" to="/settings" />
-        </MenuCard>
-      </section>
-
-      {/* نموذج تعديل الملف */}
-      <section ref={formRef} className="space-y-2">
-        <SectionTitle>تعديل الملف الشخصي</SectionTitle>
-        <div className="space-y-4 rounded-2xl border border-border bg-card p-4">
-          <div>
-            <label className="mb-1 block text-xs font-bold text-muted-foreground">
-              الاسم الكامل *
-            </label>
-            <input
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="مثال: أحمد بن يوسف"
-              className="w-full rounded-xl border border-input bg-background px-3 py-2.5 outline-none transition focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-bold text-muted-foreground">
-              رقم الهاتف
-            </label>
-            <input
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="05XX XX XX XX"
-              inputMode="tel"
-              dir="ltr"
-              className="w-full rounded-xl border border-input bg-background px-3 py-2.5 text-right outline-none transition focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
+      {/* نموذج تعديل الملف (يظهر عند الضغط على تعديل) */}
+      {editing && (
+        <section ref={formRef} className="space-y-2">
+          <SectionTitle>تعديل الملف الشخصي</SectionTitle>
+          <div className="space-y-4 rounded-2xl border border-border bg-card p-4">
             <div>
-              <label className="mb-1 block text-xs font-bold text-muted-foreground">الولاية</label>
-              <WilayaSelect
-                value={wilayaId}
-                onChange={setWilayaId}
-                allLabel="اختر الولاية"
+              <label className="mb-1 block text-xs font-bold text-muted-foreground">
+                الاسم الكامل *
+              </label>
+              <input
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="مثال: أحمد بن يوسف"
                 className="w-full rounded-xl border border-input bg-background px-3 py-2.5 outline-none transition focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
               />
             </div>
             <div>
               <label className="mb-1 block text-xs font-bold text-muted-foreground">
-                البلدية
+                رقم الهاتف
               </label>
               <input
-                value={commune}
-                onChange={(e) => setCommune(e.target.value)}
-                placeholder="مثال: باب الزوار"
-                className="w-full rounded-xl border border-input bg-background px-3 py-2.5 outline-none transition focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="05XX XX XX XX"
+                inputMode="tel"
+                dir="ltr"
+                className="w-full rounded-xl border border-input bg-background px-3 py-2.5 text-right outline-none transition focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
               />
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1 block text-xs font-bold text-muted-foreground">
+                  الولاية
+                </label>
+                <WilayaSelect
+                  value={wilayaId}
+                  onChange={setWilayaId}
+                  allLabel="اختر الولاية"
+                  className="w-full rounded-xl border border-input bg-background px-3 py-2.5 outline-none transition focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-bold text-muted-foreground">
+                  البلدية
+                </label>
+                <input
+                  value={commune}
+                  onChange={(e) => setCommune(e.target.value)}
+                  placeholder="مثال: باب الزوار"
+                  className="w-full rounded-xl border border-input bg-background px-3 py-2.5 outline-none transition focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+                />
+              </div>
+            </div>
+            <button
+              onClick={save}
+              disabled={busy}
+              className="w-full rounded-2xl bg-primary py-3 font-bold text-primary-foreground transition active:scale-[0.97] disabled:opacity-50"
+            >
+              {busy ? "جارٍ الحفظ..." : "حفظ التغييرات"}
+            </button>
           </div>
-          <button
-            onClick={save}
-            disabled={busy}
-            className="w-full rounded-2xl bg-primary py-3 font-bold text-primary-foreground transition active:scale-[0.97] disabled:opacity-50"
-          >
-            {busy ? "جارٍ الحفظ..." : "حفظ التغييرات"}
-          </button>
-        </div>
-      </section>
-
-      {/* ملاحظة */}
-      <p className="px-2 text-center text-[10px] text-muted-foreground">
-        تُستخدم هذه البيانات لتأكيد الطلبات والتوصيل. يمكنك تعديلها في أي وقت.
-      </p>
+        </section>
+      )}
     </div>
   );
 }

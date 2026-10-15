@@ -3,8 +3,17 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { ArrowRight, SlidersHorizontal } from "lucide-react";
 import { useGeo } from "@/lib/geo";
-import { CATEGORIES, categoryLabel, searchProducts, type SortBy } from "@/lib/sooqy";
+import { searchProducts, type SortBy } from "@/lib/sooqy";
+import {
+  MAIN_CATEGORIES,
+  categoryEmoji,
+  categoryHint,
+  categoryLabel,
+  parentOf,
+  resolveCategoryId,
+} from "@/lib/taxonomy";
 import { ProductCard } from "@/components/sooqy/cards";
+import { CategoryBreadcrumb, SubcategoryChips } from "@/components/sooqy/category-tiles";
 import { ProductGridSkeleton } from "@/components/sooqy/skeleton";
 import { EmptyState } from "@/components/sooqy/empty-state";
 import { Reveal } from "@/components/sooqy/reveal";
@@ -32,6 +41,7 @@ function CategoryPage() {
   const [inStock, setInStock] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
 
+  // `searchProducts` يوسّع التصنيف الرئيسي إلى كل فئاته الفرعية تلقائيًا
   const products = useInfiniteQuery({
     queryKey: ["category", catId, sort, inStock, pos?.lat],
     queryFn: ({ pageParam }) =>
@@ -63,38 +73,33 @@ function CategoryPage() {
   }, [products.hasNextPage, catId, sort, inStock]);
 
   const list = (products.data?.pages ?? []).flat();
-  const cat = CATEGORIES.find((c) => c.id === catId);
+  const active = resolveCategoryId(catId);
+  const current = parentOf(active);
+  const otherMains = MAIN_CATEGORIES.filter((c) => c.id !== current?.id).slice(0, 6);
 
   return (
     <div className="space-y-4 px-4 pt-4">
-      <header className="flex items-center gap-3 py-1">
-        <button onClick={() => window.history.back()} aria-label="رجوع" className="icon-btn">
+      <header className="flex items-start gap-3 py-1">
+        <button onClick={() => window.history.back()} aria-label="رجوع" className="icon-btn shrink-0">
           <ArrowRight className="size-5" />
         </button>
-        <div className="flex items-center gap-2">
-          <span className="text-2xl">{cat?.emoji ?? "🛍️"}</span>
-          <h1 className="text-h1 text-foreground">{categoryLabel(catId)}</h1>
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="text-2xl">{categoryEmoji(catId)}</span>
+          <div className="min-w-0">
+            <h1 className="truncate text-h1 text-foreground">{categoryLabel(catId)}</h1>
+            {categoryHint(current?.id) && (
+              <p className="truncate text-xs font-medium text-muted-foreground">
+                {categoryHint(current?.id)}
+              </p>
+            )}
+          </div>
         </div>
       </header>
 
-      {/* فئات أخرى (تنقّل سريع) */}
-      <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4">
-        {CATEGORIES.map((c) => (
-          <Link
-            key={c.id}
-            to="/category/$catId"
-            params={{ catId: c.id }}
-            className={cn(
-              "shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition",
-              c.id === catId
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-border bg-card text-muted-foreground",
-            )}
-          >
-            {c.emoji} {c.label}
-          </Link>
-        ))}
-      </div>
+      <CategoryBreadcrumb categoryId={catId} />
+
+      {/* الفئات الفرعية للتصنيف الرئيسي */}
+      <SubcategoryChips categoryId={catId} />
 
       {/* الترتيب والفلاتر */}
       <div className="flex items-center justify-between gap-2">
@@ -105,7 +110,9 @@ function CategoryPage() {
               onClick={() => setSort(s.id)}
               className={cn(
                 "shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-bold transition",
-                sort === s.id ? "border-primary bg-primary-soft text-primary-soft-foreground" : "border-border bg-card text-muted-foreground",
+                sort === s.id
+                  ? "border-primary bg-primary-soft text-primary-soft-foreground"
+                  : "border-border bg-card text-muted-foreground",
               )}
             >
               {s.label}
@@ -116,7 +123,9 @@ function CategoryPage() {
           onClick={() => setShowFilters(true)}
           className={cn(
             "flex h-9 shrink-0 items-center gap-1 rounded-xl border px-3 text-xs font-bold",
-            inStock ? "border-primary bg-primary-soft text-primary-soft-foreground" : "border-border bg-card text-foreground",
+            inStock
+              ? "border-primary bg-primary-soft text-primary-soft-foreground"
+              : "border-border bg-card text-foreground",
           )}
         >
           <SlidersHorizontal className="size-3.5" /> فلاتر
@@ -129,7 +138,11 @@ function CategoryPage() {
 
       {products.isLoading && <ProductGridSkeleton count={6} />}
       {!products.isLoading && list.length === 0 && (
-        <EmptyState icon="🔍" title="لا توجد منتجات في هذا التصنيف" hint="جرّب تصنيفًا آخر أو أزل الفلاتر." />
+        <EmptyState
+          icon="🔍"
+          title="لا توجد منتجات في هذا التصنيف بعد"
+          hint="جرّب فئة فرعية أخرى أو تصنيفًا مختلفًا — تُعرض هنا السلع المتوفرة فعلًا."
+        />
       )}
       <div className="grid grid-cols-2 gap-3">
         {list.map((g, i) => (
@@ -139,6 +152,24 @@ function CategoryPage() {
         ))}
       </div>
       <div ref={sentinelRef} className="h-2" />
+
+      {/* استكشاف تصنيفات أخرى */}
+      <section className="space-y-2 border-t border-border pt-4 pb-2">
+        <h2 className="text-xs font-bold text-muted-foreground">استكشف تصنيفات أخرى</h2>
+        <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4">
+          {otherMains.map((c) => (
+            <Link
+              key={c.id}
+              to="/category/$catId"
+              params={{ catId: c.id }}
+              className="flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-3.5 py-2 text-xs font-bold text-muted-foreground transition active:scale-95"
+            >
+              <span className="text-sm">{c.emoji}</span>
+              {c.label}
+            </Link>
+          ))}
+        </div>
+      </section>
 
       {/* لوحة الفلاتر */}
       {showFilters && (

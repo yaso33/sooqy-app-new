@@ -1,5 +1,6 @@
 /** أدوات البحث: تطبيع النص، تصحيح الأخطاء الإملائية، والبحثات الأخيرة. */
 import { useCallback, useSyncExternalStore } from "react";
+import { pathLabel } from "./taxonomy";
 
 const RECENT_KEY = "sooqy:recent-searches";
 const MAX_RECENT = 8;
@@ -214,7 +215,7 @@ export function buildSuggestions(
         kind: "category",
         id: c.id,
         label: c.label,
-        hint: "تصنيف",
+        hint: pathLabel(c.id) ? `تصنيف · ${pathLabel(c.id)}` : "تصنيف",
         to: `/category/${c.id}`,
       });
     }

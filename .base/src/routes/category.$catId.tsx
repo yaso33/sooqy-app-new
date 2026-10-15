@@ -1,0 +1,169 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useInfiniteQuery } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
+import { ArrowRight, SlidersHorizontal } from "lucide-react";
+import { useGeo } from "@/lib/geo";
+import { CATEGORIES, categoryLabel, searchProducts, type SortBy } from "@/lib/sooqy";
+import { ProductCard } from "@/components/sooqy/cards";
+import { ProductGridSkeleton } from "@/components/sooqy/skeleton";
+import { EmptyState } from "@/components/sooqy/empty-state";
+import { Reveal } from "@/components/sooqy/reveal";
+import { cn } from "@/lib/utils";
+
+const PAGE_SIZE = 24;
+
+export const Route = createFileRoute("/category/$catId")({
+  head: ({ params }) => ({
+    meta: [{ title: `${categoryLabel(params.catId)} — SooQy` }],
+  }),
+  component: CategoryPage,
+});
+
+const SORTS: { id: SortBy; label: string }[] = [
+  { id: "newest", label: "الأحدث" },
+  { id: "cheapest", label: "الأرخص" },
+  { id: "rating", label: "الأعلى تقييمًا" },
+];
+
+function CategoryPage() {
+  const { catId } = Route.useParams();
+  const { pos } = useGeo();
+  const [sort, setSort] = useState<SortBy>("newest");
+  const [inStock, setInStock] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+
+  const products = useInfiniteQuery({
+    queryKey: ["category", catId, sort, inStock, pos?.lat],
+    queryFn: ({ pageParam }) =>
+      searchProducts({
+        category: catId,
+        sortBy: sort,
+        inStockOnly: inStock,
+        pos,
+        limit: PAGE_SIZE,
+        offset: pageParam,
+      }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.length === PAGE_SIZE ? allPages.length * PAGE_SIZE : undefined,
+  });
+
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !products.hasNextPage) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) products.fetchNextPage();
+      },
+      { rootMargin: "400px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [products.hasNextPage, catId, sort, inStock]);
+
+  const list = (products.data?.pages ?? []).flat();
+  const cat = CATEGORIES.find((c) => c.id === catId);
+
+  return (
+    <div className="space-y-4 px-4 pt-4">
+      <header className="flex items-center gap-3 py-1">
+        <button onClick={() => window.history.back()} aria-label="رجوع" className="icon-btn">
+          <ArrowRight className="size-5" />
+        </button>
+        <div className="flex items-center gap-2">
+          <span className="text-2xl">{cat?.emoji ?? "🛍️"}</span>
+          <h1 className="text-h1 text-foreground">{categoryLabel(catId)}</h1>
+        </div>
+      </header>
+
+      {/* فئات أخرى (تنقّل سريع) */}
+      <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4">
+        {CATEGORIES.map((c) => (
+          <Link
+            key={c.id}
+            to="/category/$catId"
+            params={{ catId: c.id }}
+            className={cn(
+              "shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition",
+              c.id === catId
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border bg-card text-muted-foreground",
+            )}
+          >
+            {c.emoji} {c.label}
+          </Link>
+        ))}
+      </div>
+
+      {/* الترتيب والفلاتر */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="no-scrollbar flex gap-2 overflow-x-auto">
+          {SORTS.map((s) => (
+            <button
+              key={s.id}
+              onClick={() => setSort(s.id)}
+              className={cn(
+                "shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-bold transition",
+                sort === s.id ? "border-primary bg-primary-soft text-primary-soft-foreground" : "border-border bg-card text-muted-foreground",
+              )}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={() => setShowFilters(true)}
+          className={cn(
+            "flex h-9 shrink-0 items-center gap-1 rounded-xl border px-3 text-xs font-bold",
+            inStock ? "border-primary bg-primary-soft text-primary-soft-foreground" : "border-border bg-card text-foreground",
+          )}
+        >
+          <SlidersHorizontal className="size-3.5" /> فلاتر
+        </button>
+      </div>
+
+      <p className="text-xs font-medium text-muted-foreground">
+        {products.isLoading ? "جارٍ التحميل..." : `${list.length} منتج`}
+      </p>
+
+      {products.isLoading && <ProductGridSkeleton count={6} />}
+      {!products.isLoading && list.length === 0 && (
+        <EmptyState icon="🔍" title="لا توجد منتجات في هذا التصنيف" hint="جرّب تصنيفًا آخر أو أزل الفلاتر." />
+      )}
+      <div className="grid grid-cols-2 gap-3">
+        {list.map((g, i) => (
+          <Reveal key={g.product.id} index={i}>
+            <ProductCard g={g} />
+          </Reveal>
+        ))}
+      </div>
+      <div ref={sentinelRef} className="h-2" />
+
+      {/* لوحة الفلاتر */}
+      {showFilters && (
+        <div className="fixed inset-0 z-[90] flex items-end bg-black/30" onClick={() => setShowFilters(false)}>
+          <div
+            className="w-full animate-fade-up rounded-t-3xl border-t border-border bg-card p-5 pb-8"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-neutral-300" />
+            <h2 className="text-h3 text-foreground">الفلاتر</h2>
+            <label className="mt-4 flex items-center justify-between rounded-xl border border-border px-4 py-3 text-sm font-semibold">
+              المنتجات المتوفرة فقط
+              <input
+                type="checkbox"
+                checked={inStock}
+                onChange={(e) => setInStock(e.target.checked)}
+                className="size-4 accent-[#6366F1]"
+              />
+            </label>
+            <button onClick={() => setShowFilters(false)} className="btn-primary mt-5 w-full">
+              تطبيق
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -169,7 +169,8 @@ function CheckoutPage() {
       placeOrder();
     } else {
       setStep(step + 1);
-      window.scrollTo({ top: 0 });
+      // قفزة فورية لأعلى النموذج عند الانتقال بين الخطوات (لا تمرير ناعم)
+      window.scrollTo({ top: 0, behavior: "instant" });
     }
   };
 
@@ -473,7 +474,7 @@ function SuccessScreen({ orderId }: { orderId: string }) {
       </div>
       <div className="grid w-full max-w-xs grid-cols-2 gap-2">
         <Link
-          to="/account"
+          to="/profile"
           className="flex items-center justify-center gap-1.5 rounded-2xl bg-primary py-3 text-sm font-bold text-primary-foreground"
         >
           <PackageCheck className="size-4" /> تتبع طلبي

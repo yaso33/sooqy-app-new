@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { distanceKm, isOpenNow, type LatLng } from "./geo";
+import { categoryIds, resolveCategoryId } from "./taxonomy";
 
 export type Store = Database["public"]["Tables"]["stores"]["Row"];
 export type Product = Database["public"]["Tables"]["products"]["Row"];
@@ -30,16 +31,8 @@ export type ProductGroup = {
   nearestKm: number | null;
 };
 
-export const CATEGORIES = [
-  { id: "shoes", label: "أحذية", emoji: "👟" },
-  { id: "phones", label: "هواتف", emoji: "📱" },
-  { id: "cosmetics", label: "مستحضرات التجميل", emoji: "💄" },
-  { id: "clothes", label: "ملابس", emoji: "👕" },
-  { id: "capsules", label: "كبسولات القهوة", emoji: "☕" },
-  { id: "other", label: "أخرى", emoji: "🛍️" },
-] as const;
-
-export const categoryLabel = (id: string) => CATEGORIES.find((c) => c.id === id)?.label ?? id;
+// التصنيفات مصدرها `src/lib/taxonomy.ts` — لا تُكرَّر هنا.
+export { categoryLabel, categoryEmoji } from "./taxonomy";
 
 const OFFER_SELECT =
   "*, product:products!inner(*), store:stores!inner(*), images:product_images(*)";
@@ -156,7 +149,9 @@ export async function fetchSuggestedStores(
 /** Increment product view count (fire-and-forget). */
 export async function incrementProductView(productId: string): Promise<void> {
   // RPC موجود في الهجرات (202610120001) — لا مسار احتياطي بـ supabase.raw (غير موجودة في supabase-js v2)
-  await supabase.rpc("increment_product_view", { product_id: productId });
+  const call = supabase.rpc as unknown as (fn: string, vars?: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
+  const { error: rpcError } = await call("increment_product_view", { product_id: productId });
+  if (rpcError) throw rpcError;
 }
 
 /** Fetch most viewed products for homepage. */
@@ -166,7 +161,11 @@ export async function fetchMostViewedProducts(
   const { limit = 10, offset = 0 } = opts;
   // 1) المسار الأساسي: RPC (يتطلب هجرة 202610120001_product_views.sql —
   //    نفس الهجرة تُنشئ الدالة وعمود view_count معًا، فلا حاجة لمسار وسيط)
-  const { data: rpcData, error: rpcError } = await supabase.rpc("get_most_viewed_products", {
+  const call = supabase.rpc as unknown as (
+    fn: string,
+    vars?: Record<string, unknown>,
+  ) => Promise<{ data: unknown; error: unknown }>;
+  const { data: rpcData, error: rpcError } = await call("get_most_viewed_products", {
     limit_count: limit,
     offset_count: offset,
   });
@@ -228,7 +227,7 @@ export type SortBy = "cheapest" | "nearest" | "rating" | "newest";
 
 export async function searchProducts(opts: {
   query?: string;
-  category?: string | null;
+  category?: string | string[] | null;
   wilaya?: number | null;
   inStockOnly?: boolean;
   sortBy?: SortBy;
@@ -243,7 +242,11 @@ export async function searchProducts(opts: {
   let q = supabase.from("store_offers").select(OFFER_SELECT);
   const term = opts.query?.trim().replace(/[%,()]/g, " ");
   if (term) q = q.or(`name.ilike.%${term}%,brand.ilike.%${term}%`, { referencedTable: "products" });
-  if (opts.category) q = q.eq("product.category", opts.category);
+  if (opts.category) {
+    const cats = Array.isArray(opts.category) ? opts.category : [opts.category];
+    const ids = cats.flatMap((c) => categoryIds(c));
+    if (ids.length > 0) q = q.in("product.category", ids);
+  }
   if (opts.wilaya) q = q.eq("store.wilaya_id", opts.wilaya);
   if (opts.commune) q = q.ilike("store.commune", opts.commune);
   if (opts.inStockOnly) q = q.eq("is_available", true).gt("stock_quantity", 0);
@@ -388,15 +391,13 @@ export async function submitReview(
   // المراجعات الموثّقة: عبر دالة RPC تتحقق من طلب مُسلَّم أو حجز مُستلَم
   // (هجرة 202610140001). إن كانت القاعدة غير مهاجَرة (الدالة غير موجودة)
   // نرجع للإدراج المباشر القديم حتى لا تنكسر الميزة.
-  const { data, error } = await supabase.rpc("submit_review", {
+  const { data: rpcData, error: rpcError } = await supabase.rpc("submit_review", {
     _target_type: targetType,
     _target_id: targetId,
     _rating: rating,
     _comment: comment?.trim() || null,
   });
-  if (!error) return data as unknown as Review;
-  const msg = String(error.message ?? "");
-  if (msg.includes("PGRST202") || msg.includes("Could not find the function")) {
+  if (rpcError?.message?.includes("Could not find the function")) {
     const { data: direct, error: dErr } = await supabase
       .from("reviews")
       .insert({
@@ -410,7 +411,8 @@ export async function submitReview(
     if (dErr) throw new Error(friendlyError(dErr));
     return direct as unknown as Review;
   }
-  throw new Error(friendlyError(error));
+  if (rpcError) throw new Error(friendlyError(rpcError));
+  return rpcData as unknown as Review;
 }
 
 export async function getOffersByIds(ids: string[]): Promise<OfferFull[]> {
@@ -542,20 +544,45 @@ export async function uploadImageToBucket(
 // supabase/migrations/202610130001_store_socials_avatar.sql.
 // نفحص وجودها مرة واحدة لكل جلسة ونتكيف تلقائيًا مع القواعد غير المهاجَرة.
 
-let schemaSupport: Promise<{ storeSocials: boolean; avatar: boolean }> | null = null;
+let schemaSupport: Promise<{ storeSocials: boolean; avatar: boolean; storeCategories: boolean }> | null = null;
 
 export function fetchSchemaSupport() {
   if (!schemaSupport) {
     schemaSupport = (async () => {
-      const [insta, fb, av] = await Promise.all([
+      const [insta, fb, av, cat] = await Promise.all([
         supabase.from("stores").select("instagram_url").limit(1),
         supabase.from("stores").select("facebook_url").limit(1),
         supabase.from("profiles").select("avatar_url").limit(1),
+        supabase.from("stores").select("category,subcategories").limit(1),
       ]);
-      return { storeSocials: !insta.error && !fb.error, avatar: !av.error };
-    })().catch(() => ({ storeSocials: false, avatar: false }));
+      return {
+        storeSocials: !insta.error && !fb.error,
+        avatar: !av.error,
+        storeCategories: !cat.error,
+      };
+    })().catch(() => ({ storeSocials: false, avatar: false, storeCategories: false }));
   }
   return schemaSupport;
+}
+
+export type CategoryStat = { id: string; products: number; stores: number };
+
+/**
+ * إحصاءات التصنيفات (عدد المنتجات/المتاجر لكل تصنيف) من دالة `category_stats` في القاعدة.
+ * تعيد `null` إن لم تكن الدالة موجودة (الهجرة غير مطبّقة) → تُعرض كل التصنيفات بلا أعداد
+ * بدل إخفائها، فلا تفرغ الصفحة الرئيسية على قاعدة جديدة.
+ */
+export async function fetchCategoryStats(): Promise<CategoryStat[] | null> {
+  const call = supabase.rpc as unknown as (
+    fn: string,
+  ) => Promise<{ data: unknown; error: unknown }>;
+  const { data, error } = await call("category_stats");
+  if (error || !Array.isArray(data)) return null;
+  return (data as { id?: unknown; products?: unknown; stores?: unknown }[]).map((row) => ({
+    id: resolveCategoryId(String(row.id ?? "")),
+    products: Number(row.products) || 0,
+    stores: Number(row.stores) || 0,
+  }));
 }
 
 export type BagItem = { offerId: string; quantity: number; options: Record<string, string> };
@@ -629,6 +656,8 @@ export async function merchantCreateStore(input: {
   longitude: number | null;
   open: string;
   close: string;
+  category?: string | null;
+  subcategories?: string[] | null;
 }) {
   const { data: u } = await supabase.auth.getUser();
   if (!u.user) throw new Error(ERRORS["not_authenticated"]);
@@ -639,24 +668,42 @@ export async function merchantCreateStore(input: {
       .replace(/^-|-$/g, "") +
     "-" +
     Math.random().toString(36).slice(2, 6);
-  const { data, error } = await supabase
+  const payload: {
+    owner_id: string;
+    name: string;
+    slug: string;
+    phone: string;
+    whatsapp: string;
+    wilaya_id: number;
+    commune: string;
+    address_line: string;
+    latitude: number | null;
+    longitude: number | null;
+    opening_hours: { open: string; close: string; closed_days: string[] };
+    is_verified: boolean;
+    category?: string | null;
+    subcategories?: string[] | null;
+  } = {
+    owner_id: u.user.id,
+    name: input.name,
+    slug,
+    phone: input.phone,
+    whatsapp: input.whatsapp,
+    wilaya_id: input.wilaya_id,
+    commune: input.commune,
+    address_line: input.address_line,
+    latitude: input.latitude,
+    longitude: input.longitude,
+    opening_hours: { open: input.open, close: input.close, closed_days: [] },
+    is_verified: true, // التوثيق التلقائي — المتجر يظهر موثقًا فورًا
+  };
+  if (input.category) payload.category = resolveCategoryId(input.category);
+  if (input.subcategories && input.subcategories.length) payload.subcategories = input.subcategories;
+  const { data, error } = (await supabase
     .from("stores")
-    .insert({
-      owner_id: u.user.id,
-      name: input.name,
-      slug,
-      phone: input.phone,
-      whatsapp: input.whatsapp,
-      wilaya_id: input.wilaya_id,
-      commune: input.commune,
-      address_line: input.address_line,
-      latitude: input.latitude,
-      longitude: input.longitude,
-      opening_hours: { open: input.open, close: input.close, closed_days: [] },
-      is_verified: true, // التوثيق التلقائي — المتجر يظهر موثقًا فورًا
-    })
+    .insert(payload)
     .select()
-    .single();
+    .single()) as any;
   if (error) throw error;
   return data;
 }
@@ -941,6 +988,8 @@ export async function merchantUpdateStore(
     cover_url?: string;
     instagram_url?: string | null;
     facebook_url?: string | null;
+    category?: string | null;
+    subcategories?: string[] | null;
   },
 ) {
   const data: Record<string, unknown> = { ...patch };
@@ -950,6 +999,16 @@ export async function merchantUpdateStore(
     if (!support.storeSocials) {
       delete data.instagram_url;
       delete data.facebook_url;
+    }
+  }
+  // تصنيف المتجر وفئاته الفرعية: يحتاج هجرة 202610160001 — يُتجاهل بهدوء قبل تطبيقها
+  if (patch.category !== undefined || patch.subcategories !== undefined) {
+    const support = await fetchSchemaSupport();
+    if (!support.storeCategories) {
+      delete data["category"];
+      delete data["subcategories"];
+    } else if (patch.category) {
+      data["category"] = resolveCategoryId(patch.category);
     }
   }
   const { error } = await supabase.from("stores").update(data).eq("id", storeId);

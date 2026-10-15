@@ -18,6 +18,8 @@ export const getRouter = () => {
     routeTree,
     context: { queryClient },
     scrollRestoration: true,
+    // تغيير الصفحة = قفزة فورية للأعلى (لا تمرير ناعم) لأن الصفحة تُعاد بناؤها مع حركة fade-up
+    scrollRestorationBehavior: "instant",
     defaultPreload: "intent", // تحميل مسبق عند التمرير على الروابط (hover)
     defaultPreloadStaleTime: 0,
   });

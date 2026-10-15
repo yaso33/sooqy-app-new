@@ -32,7 +32,7 @@ export function Splash() {
     >
       {imgFailed ? (
         <div className="flex h-full w-full flex-col items-center justify-center gap-4 bg-gradient-to-b from-primary-soft via-background to-background animate-scale-in">
-          <span className="text-5xl font-extrabold tracking-tight text-primary">SooQy</span>
+          <span className="text-5xl font-extrabold tracking-[0.02em] text-primary">SOOQY</span>
           <span className="text-sm font-semibold text-muted-foreground">
             شاهد السلعة قبل الخروج
           </span>

@@ -8,7 +8,7 @@ const items = [
   { to: "/map", label: "الخريطة", icon: Map },
   { to: "/explore", label: "اكتشف", icon: Compass },
   { to: "/bag", label: "السلة", icon: ShoppingBag },
-  { to: "/account", label: "حسابي", icon: User },
+  { to: "/profile", label: "الملف الشخصي", icon: User },
 ] as const;
 
 export function BottomNav() {
@@ -47,7 +47,7 @@ export function BottomNav() {
                       </span>
                     )}
                   </span>
-                  <span className="relative">{label}</span>
+                  <span className="relative w-full truncate px-0.5 text-center">{label}</span>
                 </>
               )}
             </Link>

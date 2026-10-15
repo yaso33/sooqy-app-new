@@ -37,7 +37,7 @@ export function DynamicIsland() {
       {(active || shipping) && (
         <div className="pointer-events-none fixed inset-x-0 top-0 z-50 flex justify-center px-4 pt-[env(safe-area-inset-top)]">
           <Link
-            to="/account"
+            to="/profile"
             className="pointer-events-auto mt-2 flex animate-fade-up items-center gap-2.5 rounded-full border border-border/50 bg-ink px-4 py-2 text-xs text-ink-foreground shadow-lift"
           >
             {active ? (

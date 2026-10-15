@@ -5,7 +5,7 @@ import { Search, SlidersHorizontal, X, RefreshCw, AlertCircle, Package, Store } 
 import { isOpenNow, useGeo, getStoreStatus, type StoreStatus } from "@/lib/geo";
 import { track } from "@/lib/analytics";
 import {
-  CATEGORIES,
+  fetchCategoryStats,
   fetchCommunes,
   fetchNearStores,
   searchProducts,
@@ -14,6 +14,15 @@ import {
   type SortBy,
   categoryLabel,
 } from "@/lib/sooqy";
+import {
+  MAIN_CATEGORIES,
+  categoryEmoji,
+  categoryOptionGroups,
+  flattenedCategoryOptions,
+  isMainCategory,
+  pathLabel,
+} from "@/lib/taxonomy";
+import { CategoryGrid, OtherCategoriesRow } from "@/components/sooqy/category-tiles";
 import { ProductCard, StoreCard } from "@/components/sooqy/cards";
 import { CommuneSelect } from "@/components/sooqy/CommuneSelect";
 import { WilayaSelect } from "@/components/sooqy/WilayaSelect";
@@ -42,6 +51,12 @@ type Search = {
 };
 
 const PAGE_SIZE = 24;
+
+/** خيارات التصنيفات لمقترحات البحث (رئيسية + فرعية + أخرى) */
+const CATEGORY_SUGGESTIONS = flattenedCategoryOptions().map((c) => ({
+  ...c,
+  emoji: categoryEmoji(c.id),
+}));
 
 export const Route = createFileRoute("/explore")({
   validateSearch: (s: Record<string, unknown>): Search => ({
@@ -104,6 +119,15 @@ function Explore() {
   const s = Route.useSearch();
   const navigate = useNavigate({ from: "/explore" });
   const { pos } = useGeo();
+  // إحصاءات التصنيفات — تُخفي الأقسام الفارغة عند توفّرها فقط
+  const categoryStats = useQuery({
+    queryKey: ["category-stats"],
+    queryFn: fetchCategoryStats,
+    staleTime: 5 * 60 * 1000,
+  });
+  const categoryCounts = categoryStats.data
+    ? Object.fromEntries(categoryStats.data.map((x) => [x.id, x.products]))
+    : null;
   const [text, setText] = useState(s.q ?? "");
   const [focused, setFocused] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
@@ -209,7 +233,7 @@ function Explore() {
     recents: [],
   });
   suggestions.current = {
-    cats: CATEGORIES.filter((c) => c.label.includes(text.trim())).slice(0, 3),
+    cats: CATEGORY_SUGGESTIONS.filter((c) => c.label.includes(text.trim())).slice(0, 3),
     recents: text.trim()
       ? recents.filter((r) => r.includes(text.trim())).slice(0, 5)
       : recents.slice(0, 5),
@@ -341,7 +365,7 @@ function Explore() {
           <Chip active={!s.cat} onClick={() => set({ cat: undefined })}>
             الكل
           </Chip>
-          {CATEGORIES.map((c) => (
+          {MAIN_CATEGORIES.map((c) => (
             <Chip
               key={c.id}
               active={s.cat === c.id}
@@ -350,14 +374,28 @@ function Explore() {
               {c.emoji} {c.label}
             </Chip>
           ))}
+          {s.cat && !isMainCategory(s.cat) && (
+            <Chip active onClick={() => set({ cat: undefined })}>
+              {pathLabel(s.cat)} ✕
+            </Chip>
+          )}
         </div>
       </div>
 
       <ImageSearchRow onChange={setVisual} />
 
       {browsing ? (
-        /* ===== وضع التصفح: أقسام ===== */
+       /* ===== وضع التصفح: أقسام ===== */
         <>
+          <section className="space-y-3">
+            <h2 className="text-h3 text-foreground">تصفّح التصنيفات</h2>
+            <CategoryGrid counts={categoryCounts} />
+            <div className="space-y-2 pt-1">
+              <h3 className="text-xs font-bold text-muted-foreground">تصنيفات أخرى</h3>
+              <OtherCategoriesRow counts={categoryCounts} />
+            </div>
+          </section>
+
           <section className="space-y-3">
             <h2 className="text-h3 text-foreground">وصل حديثًا</h2>
             {products.isLoading && <ProductGridSkeleton count={4} />}
@@ -666,10 +704,14 @@ function Explore() {
                   className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
                 >
                   <option value="">جميع التصنيفات</option>
-                  {CATEGORIES.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.emoji} {c.label}
-                    </option>
+                  {categoryOptionGroups().map((g) => (
+                    <optgroup key={g.label} label={g.label}>
+                      {g.options.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </optgroup>
                   ))}
                 </select>
               </div>

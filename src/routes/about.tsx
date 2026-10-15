@@ -121,7 +121,7 @@ function AboutPage() {
             سياسة الخصوصية
           </Link>
           <Link
-            to="/account"
+            to="/profile"
             className="flex items-center gap-2 rounded-2xl bg-card p-3 text-sm font-bold shadow-soft"
           >
             <span className="text-primary">

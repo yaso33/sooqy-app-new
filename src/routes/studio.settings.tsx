@@ -5,6 +5,11 @@ import { Camera, ImagePlus, MapPin, Save, Store } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { fetchMyStore, merchantUpdateStore, uploadImageToBucket } from "@/lib/sooqy";
+import { childrenOf } from "@/lib/taxonomy";
+import {
+  MainCategoryPicker,
+  SubcategoryMultiSelect,
+} from "@/components/sooqy/category-tiles";
 import { geoErrorMessage, useGeo } from "@/lib/geo";
 import { WilayaSelect } from "@/components/sooqy/WilayaSelect";
 import { PageHeader } from "@/components/sooqy/page-header";
@@ -52,6 +57,8 @@ function StoreSettingsPage() {
     facebook: "",
     latitude: null as number | null,
     longitude: null as number | null,
+    category: null as string | null,
+    subcategories: [] as string[],
   });
   const [closedDays, setClosedDays] = useState<number[]>([]);
   const [logo, setLogo] = useState<File | null>(null);
@@ -82,6 +89,8 @@ function StoreSettingsPage() {
       facebook: s.facebook_url ?? "",
       latitude: s.latitude ?? null,
       longitude: s.longitude ?? null,
+      category: s.category ?? null,
+      subcategories: (s.subcategories ?? []) as string[],
     });
     setClosedDays(oh.closed_days ?? []);
     setLogoPreview(s.logo_url ?? null);
@@ -155,6 +164,8 @@ function StoreSettingsPage() {
         ...(coverUrl ? { cover_url: coverUrl } : {}),
         instagram_url: form.instagram.trim() || null,
         facebook_url: form.facebook.trim() || null,
+        category: form.category,
+        subcategories: form.subcategories,
       });
       await qc.invalidateQueries({ queryKey: ["my-store"] });
       toast.success("تم حفظ إعدادات المتجر ✅");
@@ -284,6 +295,50 @@ function StoreSettingsPage() {
             />
           </div>
         </div>
+      </section>
+
+      {/* بطاقة: تصنيف المتجر */}
+      <section className="space-y-3 rounded-2xl border border-border bg-card p-4">
+        <div>
+          <h2 className="text-sm font-extrabold text-foreground">تصنيف المتجر</h2>
+          <p className="text-xs text-muted-foreground">
+            تصنيف رئيسي واحد على الأقل، ويمكنك إضافة الفئات الفرعية التي تبيعها.
+          </p>
+        </div>
+        <MainCategoryPicker
+          value={form.category}
+          onChange={(category) =>
+            setForm((f) => ({
+              ...f,
+              category,
+              subcategories: f.subcategories.filter((x) =>
+                childrenOf(category).some((c) => c.id === x),
+              ),
+            }))
+          }
+        />
+        {form.category && (
+          <div className="space-y-2">
+            <label className={labelCls}>الفئات الفرعية (اختيارية)</label>
+            <SubcategoryMultiSelect
+              categoryId={form.category}
+              value={form.subcategories}
+              onToggle={(id) =>
+                setForm((f) => ({
+                  ...f,
+                  subcategories: f.subcategories.includes(id)
+                    ? f.subcategories.filter((x) => x !== id)
+                    : [...f.subcategories, id],
+                }))
+              }
+            />
+          </div>
+        )}
+        {!form.category && (
+          <p className="rounded-xl bg-warning-soft px-3 py-2 text-[11px] font-bold text-warning-foreground">
+            ⚠️ لم يُحدَّد تصنيف المتجر بعد — اختر تصنيفًا رئيسيًا ليظهر متجرك في الأقسام المناسبة.
+          </p>
+        )}
       </section>
 
       {/* بطاقة: الموقع */}

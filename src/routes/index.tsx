@@ -1,32 +1,27 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { Bell, ChevronDown, MapPin, Search, User } from "lucide-react";
+import { Bell, MapPin, Search } from "lucide-react";
 import { useGeo } from "@/lib/geo";
 import {
-  CATEGORIES,
-  fetchNearStores,
   fetchHomepageOffers,
-  fetchSuggestedStores,
   fetchMostViewedGroups,
   searchProducts,
 } from "@/lib/sooqy";
-import { ProductCard, StoreCard } from "@/components/sooqy/cards";
-import { WilayaSelect } from "@/components/sooqy/WilayaSelect";
-import { OfferCard } from "@/components/sooqy/cards";
-import { ProductGridSkeleton, ListSkeleton } from "@/components/sooqy/skeleton";
+import { OfferCard, ProductCard } from "@/components/sooqy/cards";
+import { WilayaButton } from "@/components/sooqy/WilayaSelect";
+import { ProductGridSkeleton } from "@/components/sooqy/skeleton";
 import { EmptyState } from "@/components/sooqy/empty-state";
 import { ErrorState } from "@/components/sooqy/error-state";
 import { Reveal } from "@/components/sooqy/reveal";
-import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "SooQy — اكتشف المتاجر من حولك" },
+      { title: "SooQy — اكتشف المنتجات من حولك" },
       {
         name: "description",
-        content: "اكتشف المتاجر القريبة منك، قارن الأسعار، واحجز أو اطلب التوصيل إلى 58 ولاية.",
+        content: "اكتشف السلع القريبة منك، قارن الأسعار، واحجز أو اطلب التوصيل إلى 58 ولاية.",
       },
       { property: "og:title", content: "SooQy — السوق الجزائري في جيبك" },
       { property: "og:description", content: "Discover. Shop. Local." },
@@ -35,14 +30,11 @@ export const Route = createFileRoute("/")({
   component: Home,
 });
 
-type Pulse = "open" | "near" | "all";
-
 function Home() {
   const navigate = useNavigate();
   const { pos } = useGeo();
   const [wilaya, setWilaya] = useState<number | null>(null);
   const [q, setQ] = useState("");
-  const [pulse, setPulse] = useState<Pulse>("near");
 
   useEffect(() => {
     const w = localStorage.getItem("sooqy:wilaya");
@@ -55,10 +47,6 @@ function Home() {
     else localStorage.removeItem("sooqy:wilaya");
   };
 
-  const stores = useQuery({
-    queryKey: ["near-stores", wilaya, pos?.lat, pos?.lng],
-    queryFn: () => fetchNearStores(wilaya, pos?.lat, pos?.lng),
-  });
   const trending = useInfiniteQuery({
     queryKey: ["trending", wilaya, pos?.lat],
     queryFn: ({ pageParam = 0 }) =>
@@ -66,6 +54,14 @@ function Home() {
     initialPageParam: 0,
     getNextPageParam: (lastPage, allPages) =>
       lastPage.length === 20 ? allPages.length * 20 : undefined,
+  });
+  const nearbyProducts = useQuery({
+    queryKey: ["nearby-products", wilaya, pos?.lat, pos?.lng],
+    queryFn: () => searchProducts({ wilaya, pos, sortBy: "nearest", limit: 12 }),
+  });
+  const topRatedProducts = useQuery({
+    queryKey: ["top-rated-products", wilaya, pos?.lat, pos?.lng],
+    queryFn: () => searchProducts({ wilaya, pos, sortBy: "rating", limit: 10 }),
   });
   const offers = useInfiniteQuery({
     queryKey: ["homepage-offers", wilaya],
@@ -75,20 +71,6 @@ function Home() {
     getNextPageParam: (lastPage, allPages) =>
       lastPage.length === 8 ? allPages.length * 8 : undefined,
   });
-  const suggestedStores = useInfiniteQuery({
-    queryKey: ["suggested-stores", wilaya, pos?.lat, pos?.lng],
-    queryFn: ({ pageParam = 0 }) =>
-      fetchSuggestedStores({
-        wilayaId: wilaya,
-        lat: pos?.lat,
-        lng: pos?.lng,
-        limit: 6,
-        offset: pageParam,
-      }),
-    initialPageParam: 0,
-    getNextPageParam: (lastPage, allPages) =>
-      lastPage.length === 6 ? allPages.length * 6 : undefined,
-  });
   const mostViewed = useInfiniteQuery({
     queryKey: ["most-viewed"],
     queryFn: ({ pageParam = 0 }) => fetchMostViewedGroups({ limit: 10, offset: pageParam }),
@@ -97,37 +79,24 @@ function Home() {
       lastPage.length === 10 ? allPages.length * 10 : undefined,
   });
 
-  let storeList = stores.data ?? [];
-  if (pulse === "open") storeList = storeList.filter((s) => s.open);
-  if (pulse === "near")
-    storeList = [...storeList].sort((a, b) => (a.distance ?? 1e9) - (b.distance ?? 1e9));
-
   const products = (trending.data?.pages ?? []).flat();
   const offerList = (offers.data?.pages ?? []).flat();
-  const suggestedList = (suggestedStores.data?.pages ?? []).flat();
   const mostViewedProducts = (mostViewed.data?.pages ?? []).flat();
+  const nearby = nearbyProducts.data ?? [];
+  const topRated = topRatedProducts.data ?? [];
 
   return (
     <div className="space-y-8 px-4 pt-4">
       {/* الترويسة */}
-      <header className="flex items-center justify-between">
-        <h1 className="text-display text-foreground">SooQy</h1>
+      <header className="flex items-center justify-between gap-2">
+        <h1 className="text-display tracking-[0.02em] text-primary">SOOQY</h1>
         <div className="flex items-center gap-2">
+          <WilayaButton value={wilaya} onChange={changeWilaya} />
           <Link to="/notifications" aria-label="الإشعارات" className="icon-btn">
             <Bell className="size-5" />
           </Link>
-          <Link to="/account" aria-label="حسابي" className="icon-btn">
-            <User className="size-5" />
-          </Link>
         </div>
       </header>
-
-      {/* الموقع */}
-      <div className="flex items-center gap-1.5">
-        <MapPin className="size-4 shrink-0 text-primary" />
-        <WilayaSelect value={wilaya} onChange={changeWilaya} className="h-9 flex-1 text-sm" />
-        <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
-      </div>
 
       {/* البحث */}
       <form
@@ -141,7 +110,7 @@ function Home() {
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="ابحث عن منتج أو متجر..."
+          placeholder="ابحث عن منتج..."
           aria-label="بحث"
           className="h-12 flex-1 bg-transparent text-body outline-none placeholder:text-muted"
         />
@@ -153,80 +122,33 @@ function Home() {
         </button>
       </form>
 
-      {/* الفئات */}
+      {/* سلع قريبة منك */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-h3 text-foreground">التصنيفات</h2>
+          <h2 className="text-h3 text-foreground">سلع قريبة منك</h2>
           <Link to="/explore" className="text-sm font-bold text-primary">
             عرض الكل
           </Link>
         </div>
-        <div className="no-scrollbar -mx-4 flex gap-2.5 overflow-x-auto px-4 pb-1">
-          {CATEGORIES.map((c) => (
-            <Link
-              key={c.id}
-              to="/category/$catId"
-              params={{ catId: c.id }}
-              className="flex shrink-0 flex-col items-center gap-1.5 rounded-2xl border border-border bg-card px-4 py-3 transition hover:border-primary/40 hover:shadow-soft"
-            >
-              <span className="text-2xl">{c.emoji}</span>
-              <span className="text-xs font-bold">{c.label}</span>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      {/* المتاجر القريبة */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-h3 text-foreground">متاجر قريبة منك</h2>
-          <Link to="/stores" className="text-sm font-bold text-primary">
-            عرض الكل
-          </Link>
-        </div>
-        <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
-          {(
-            [
-              { id: "near", label: "الأقرب" },
-              { id: "open", label: "مفتوح الآن" },
-              { id: "all", label: "الكل" },
-            ] as const
-          ).map((p) => (
-            <button
-              key={p.id}
-              onClick={() => setPulse(p.id)}
-              className={cn(
-                "shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition",
-                pulse === p.id
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-card text-muted-foreground",
-              )}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
-        {stores.isLoading && <ListSkeleton count={2} />}
-        {stores.isError && (
+        {nearbyProducts.isLoading && <ProductGridSkeleton count={4} />}
+        {nearbyProducts.isError && (
           <ErrorState
-            scope="home:near-stores"
-            error={stores.error}
-            onRetry={() => stores.refetch()}
+            scope="home:nearby-products"
+            error={nearbyProducts.error}
+            onRetry={() => nearbyProducts.refetch()}
           />
         )}
-        {!stores.isLoading && storeList.length === 0 && (
+        {!nearbyProducts.isLoading && nearby.length === 0 && (
           <EmptyState
-            icon="🏪"
-            title="لا توجد محلات بهذا الفلتر حالياً"
-            hint="جرّب تغيير الولاية أو الفلتر."
+            icon="📍"
+            title="لا توجد سلع قريبة حالياً"
+            hint="جرّب تغيير الولاية أو تصفّح سلعاً أخرى."
           />
         )}
-        <div className="no-scrollbar -mx-4 flex gap-3 overflow-x-auto px-4 pb-1">
-          {storeList.slice(0, 6).map((s, i) => (
-            <Reveal key={s.id} index={i}>
-              <div className="w-64 shrink-0">
-                <StoreCard s={s} distance={s.distance} />
-              </div>
+        <div className="grid grid-cols-2 gap-3">
+          {nearby.slice(0, 8).map((g, i) => (
+            <Reveal key={g.product.id} index={i}>
+              <ProductCard g={g} />
             </Reveal>
           ))}
         </div>
@@ -352,53 +274,40 @@ function Home() {
         )}
       </section>
 
-      {/* متاجر مقترحة */}
+      {/* الأعلى تقييماً */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-h3 text-foreground">متاجر مقترحة</h2>
-          <Link to="/stores" className="text-sm font-bold text-primary">
+          <h2 className="text-h3 text-foreground">الأعلى تقييماً</h2>
+          <Link to="/explore" className="text-sm font-bold text-primary">
             عرض الكل
           </Link>
         </div>
-        {suggestedStores.isLoading && <ListSkeleton count={3} />}
-        {suggestedStores.isError && (
+        {topRatedProducts.isLoading && <ProductGridSkeleton count={4} />}
+        {topRatedProducts.isError && (
           <ErrorState
-            scope="home:suggested"
-            error={suggestedStores.error}
-            onRetry={() => suggestedStores.refetch()}
+            scope="home:top-rated"
+            error={topRatedProducts.error}
+            onRetry={() => topRatedProducts.refetch()}
           />
         )}
-        {!suggestedStores.isLoading && suggestedList.length === 0 && (
+        {!topRatedProducts.isLoading && topRated.length === 0 && (
           <EmptyState
-            icon="🏪"
-            title="لا توجد متاجر مقترحة"
-            hint="ستظهر متاجر مقترحة بناءً على موقعك."
+            icon="⭐"
+            title="لا توجد سلع مقيَّمة بعد"
+            hint="ستظهر هنا السلع من المتاجر الأعلى تقييماً."
           />
         )}
-        <div className="no-scrollbar -mx-4 flex gap-3 overflow-x-auto px-4 pb-1">
-          {suggestedList.slice(0, 6).map((s, i) => (
-            <Reveal key={s.id} index={i}>
-              <div className="w-64 shrink-0">
-                <StoreCard s={s} distance={s.distance} />
-              </div>
+        <div className="grid grid-cols-2 gap-3">
+          {topRated.slice(0, 8).map((g, i) => (
+            <Reveal key={g.product.id} index={i}>
+              <ProductCard g={g} />
             </Reveal>
           ))}
         </div>
-        {suggestedStores.hasNextPage && !suggestedStores.isFetchingNextPage && (
-          <div className="mt-3 text-center">
-            <button
-              onClick={() => suggestedStores.fetchNextPage()}
-              className="btn-secondary w-full py-2"
-              disabled={suggestedStores.isFetchingNextPage}
-            >
-              تحميل المزيد
-            </button>
-          </div>
-        )}
       </section>
 
       {/* زر استكشاف جميع المتاجر */}
-      <div className="text-center pt-2">
+      <div className="pt-2 text-center">
         <Link to="/stores" className="btn-secondary inline-flex items-center gap-2">
           استكشاف جميع المتاجر
           <MapPin className="size-4" />

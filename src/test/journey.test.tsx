@@ -56,17 +56,16 @@ describe("جولة المستخدم — كل صفحة تُرسم بمحتواه�
     expect?: string | RegExp;
     placeholder?: string;
   }> = [
-    { to: "/", expect: "SooQy" },
+    { to: "/", expect: /SOOQY/ },
     { to: "/explore", expect: "اكتشف" },
     { to: "/stores", expect: "المتاجر" },
     { to: "/stores/$storeId", params: { storeId: "store-1" }, expect: "متجر التجربة" },
-    { to: "/category/$catId", params: { catId: "shoes" }, expect: "أحذية" },
+    { to: "/category/$catId", params: { catId: "shoes" }, expect: "الأحذية" },
     { to: "/products/$productId", params: { productId: "prod-1" }, expect: "حذاء رياضي" },
     { to: "/map", placeholder: "ابحث عن متجر أو مكان..." },
     { to: "/bag", expect: "سلة التسوق" },
     { to: "/checkout", expect: "تحتاج لدخول الحساب" },
     { to: "/favorites", expect: "المفضلة" },
-    { to: "/account", expect: "سجّل الدخول لحسابك" },
     { to: "/settings", expect: "الإعدادات" },
     { to: "/profile", expect: "سجّل الدخول لتخصيص ملفك" },
     { to: "/notifications", expect: "الإشعارات" },
@@ -163,6 +162,10 @@ describe("جولة المستخدم — تدفقات حقيقية", () => {
     fireEvent.change(screen.getByPlaceholderText("العنوان"), { target: { value: "حي 5 جويلية" } });
     fireEvent.change(screen.getByLabelText("اختيار الولاية"), { target: { value: "16" } });
 
+    // التصنيف الرئيسي للمتجر صار مطلوبًا (شجرة التصنيفات الجديدة)
+    fireEvent.click(screen.getByRole("button", { name: /الأزياء والملابس/ }));
+    fireEvent.click(screen.getByRole("button", { name: /الأحذية/ }));
+
     fireEvent.click(screen.getByRole("button", { name: "فتح المتجر" }));
 
     await waitFor(() =>
@@ -236,6 +239,27 @@ describe("جولة المستخدم — تدفقات حقيقية", () => {
     // السلة فُرشت بعد الطلب
     await go(router, "/bag");
     await expectText("سلتك فارغة");
+  });
+
+  it("الملف الشخصي لمستخدم مسجّل يُرسم بحقوله وروابطه", async () => {
+    // حماية من انحدار: كان `<Wallet>` مستخدمًا في الصفحة بلا استيراد، فتسقط
+    // الصفحة كلها بـ ReferenceError («Wallet is not defined») بمجرد فتحها.
+    setSession({ id: "user-1", email: "malik@test.dz" });
+    const router = renderApp();
+    await go(router, "/profile");
+
+    await expectText("تعديل الملف الشخصي");
+    expect(screen.getByPlaceholderText("مثال: أحمد بن يوسف")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("05XX XX XX XX")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "حفظ التغييرات" })).toBeInTheDocument();
+
+    // روابط الصفحة الداخلية حقيقية (لا href فارغ)
+    const inner = Array.from(document.querySelectorAll(".max-w-xl a")).filter((a) => !a.closest("nav"));
+    expect(inner.length).toBeGreaterThan(3);
+    for (const a of inner) expect(a.getAttribute("href")).toBeTruthy();
+
+    // زر «تعديل» ينقل التركيز إلى النموذج (scrollIntoView قد لا يكون مدعومًا)
+    fireEvent.click(screen.getByRole("button", { name: /تعديل/ }));
   });
 
   it("إرسال تقييم لمنتج يظهر تأكيد «قمت بتقييم هذا العنصر»", async () => {

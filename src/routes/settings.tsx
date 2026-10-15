@@ -8,6 +8,7 @@ import {
   HelpCircle,
   Info,
   LogOut,
+  MapPin,
   Moon,
   Shield,
   Trash2,
@@ -49,7 +50,7 @@ function SettingsPage() {
   if (!user) {
     return (
       <div className="mx-auto max-w-xl px-4 pb-28 pt-4">
-        <PageHeader title="الإعدادات" back="/account" />
+        <PageHeader title="الإعدادات" back="/profile" />
         <div className="mt-6 rounded-2xl border border-border bg-card p-6 text-center">
           <p className="text-body text-muted-foreground">يرجى تسجيل الدخول للوصول إلى الإعدادات</p>
           <Link to="/auth" className="btn-primary mt-4 w-full">
@@ -66,7 +67,7 @@ function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-xl space-y-5 px-4 pb-28 pt-4">
-      <PageHeader title="الإعدادات" subtitle="خصّص تجربتك في SooQy" back="/account" />
+      <PageHeader title="الإعدادات" subtitle="خصّص تجربتك في SooQy" back="/profile" />
 
       {/* بطاقة الحساب */}
       <div className="flex items-center gap-4 rounded-2xl border border-border bg-card p-4">
@@ -87,6 +88,7 @@ function SettingsPage() {
         <SectionTitle>الحساب</SectionTitle>
         <MenuCard>
           <MenuRow icon={User} label="معلومات الحساب" hint="الاسم، الهاتف، العنوان" to="/profile" />
+          <MenuRow icon={MapPin} label="عناويني" hint="إدارة عناوين التوصيل" soon />
           <MenuRow icon={Shield} label="الأمان وتسجيل الدخول" soon />
         </MenuCard>
       </section>
@@ -120,12 +122,7 @@ function SettingsPage() {
             label={signingOut ? "جارٍ تسجيل الخروج..." : "تسجيل الخروج"}
             onClick={() => void signOut()}
           />
-          <MenuRow
-            icon={Trash2}
-            label="حذف الحساب"
-            danger
-            onClick={() => setConfirmDelete(true)}
-          />
+          <MenuRow icon={Trash2} label="حذف الحساب" danger onClick={() => setConfirmDelete(true)} />
         </MenuCard>
       </section>
 
@@ -139,7 +136,12 @@ function SettingsPage() {
         confirmLabel="حذف الحساب"
         busy={signingOut}
         onCancel={() => setConfirmDelete(false)}
-        onConfirm={() => supabase.auth.deleteUser().then(() => toast.success("تم حذف الحساب")).catch((e) => toast.error("فشل الحذف: " + e.message))}
+        onConfirm={() =>
+          supabase.auth
+            .deleteUser()
+            .then(() => toast.success("تم حذف الحساب"))
+            .catch((e) => toast.error("فشل الحذف: " + e.message))
+        }
       />
     </div>
   );

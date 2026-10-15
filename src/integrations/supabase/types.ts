@@ -422,9 +422,10 @@ export type Database = {
           },
         ];
       };
-      stores: {
+stores: {
         Row: {
           address_line: string | null;
+          category: string | null;
           commission_rate: number;
           commune: string | null;
           cover_url: string | null;
@@ -439,15 +440,19 @@ export type Database = {
           longitude: number | null;
           name: string;
           opening_hours: Json;
+          open?: boolean;
+          distance?: number | null;
           owner_id: string | null;
           phone: string | null;
           rating: number;
           slug: string;
+          subcategories: string[];
           whatsapp: string | null;
           wilaya_id: number;
         };
         Insert: {
           address_line?: string | null;
+          category?: string | null;
           commission_rate?: number;
           commune?: string | null;
           cover_url?: string | null;
@@ -462,15 +467,19 @@ export type Database = {
           longitude?: number | null;
           name: string;
           opening_hours?: Json;
+          open?: boolean;
+          distance?: number | null;
           owner_id?: string | null;
           phone?: string | null;
           rating?: number;
-          slug: string;
+          slug?: string;
+          subcategories?: string[];
           whatsapp?: string | null;
           wilaya_id: number;
         };
         Update: {
           address_line?: string | null;
+          category?: string | null;
           commission_rate?: number;
           commune?: string | null;
           cover_url?: string | null;
@@ -485,10 +494,13 @@ export type Database = {
           longitude?: number | null;
           name?: string;
           opening_hours?: Json;
+          open?: boolean;
+          distance?: number | null;
           owner_id?: string | null;
           phone?: string | null;
           rating?: number;
           slug?: string;
+          subcategories?: string[];
           whatsapp?: string | null;
           wilaya_id?: number;
         };
@@ -603,6 +615,30 @@ export type Database = {
           _user_id: string;
         };
         Returns: boolean;
+      };
+      submit_review: {
+        Args: {
+          _comment?: string;
+          _rating: number;
+          _target_id: string;
+          _target_type: "product" | "store";
+        };
+        Returns: {
+          comment: string | null;
+          created_at: string;
+          id: string;
+          rating: number;
+          status: string;
+          target_id: string;
+          target_type: string;
+          user_id: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "reviews";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
       };
       is_offer_owner: { Args: { _offer_id: string }; Returns: boolean };
       is_order_merchant: { Args: { _order_id: string }; Returns: boolean };
