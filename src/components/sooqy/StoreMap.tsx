@@ -7,6 +7,12 @@ import { MAP_COLORS, OSM_RASTER_FALLBACK, SOOQY_VECTOR_STYLE, VECTOR_SOURCE_ID }
 import type { LatLng } from "@/lib/geo";
 import type { Store } from "@/lib/sooqy";
 
+// حدود الجزائر التقريبية (南西، شمال شرق) كـ [lng, lat]
+const DZ_BOUNDS: [number, number][] = [
+  [-9.6, 18.9],
+  [12.2, 37.2],
+];
+
 const C = MAP_COLORS;
 
 const STORE_ICON =
@@ -108,7 +114,9 @@ function applyMarkerStyle(el: HTMLElement, active: boolean, label = ""): HTMLEle
   pin.style.height = size + "px";
   pin.style.borderWidth = border + "px";
   pin.style.boxShadow = shadow;
-  pin.style.background = active ? C.primaryDeep : `linear-gradient(135deg, ${C.primary} 0%, ${C.primaryDark} 100%)`;
+  pin.style.background = active
+    ? C.primaryDeep
+    : `linear-gradient(135deg, ${C.primary} 0%, ${C.primaryDark} 100%)`;
   pin.style.transform = active ? "scale(1.08)" : "scale(1)";
 
   return el;
@@ -133,6 +141,7 @@ export default function StoreMap({
   const userMarkerRef = useRef<maplibregl.Marker | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const fittedRef = useRef(false);
   const [tilesWarn, setTilesWarn] = useState(false);
   const [usedFallback, setUsedFallback] = useState(false);
   const [mapReady, setMapReady] = useState(false);
@@ -185,13 +194,13 @@ export default function StoreMap({
       container: el,
       style: SOOQY_VECTOR_STYLE as maplibregl.StyleSpecification,
       center: [center.lng, center.lat] as [number, number],
-      zoom: 13,
+      zoom: 6,
       attributionControl: { compact: true },
       dragRotate: false,
       touchPitch: false,
       pitch: 0,
       maxZoom: 19,
-      minZoom: 9,
+      minZoom: 4,
       maxCanvasSize: [4096, 4096],
     });
 
@@ -209,12 +218,18 @@ export default function StoreMap({
     });
 
     map.on("error", (e) => {
-      const err = (e as unknown as { error?: { message?: string; url?: string; status?: number } }).error;
+      const err = (e as unknown as { error?: { message?: string; url?: string; status?: number } })
+        .error;
       const msg = err?.message ?? String(e);
       const url = err?.url ?? "";
       console.error("[StoreMap] خطأ في الخريطة:", msg, url);
       if (usedFallback) return;
-      if (url.includes("openfreemap.org/planet") || msg.includes("source") || msg.includes("tile") || msg.includes("Style")) {
+      if (
+        url.includes("openfreemap.org/planet") ||
+        msg.includes("source") ||
+        msg.includes("tile") ||
+        msg.includes("Style")
+      ) {
         console.warn("[StoreMap] فشل تحميل البلاطات المتجهية — التحويل للنمط الاحتياطي (OSM نقطي)");
         try {
           map.setStyle(OSM_RASTER_FALLBACK as maplibregl.StyleSpecification);
@@ -230,6 +245,11 @@ export default function StoreMap({
     map.on("load", () => {
       dbg("حدث load — الخريطة جاهزة");
       setMapReady(true);
+      // عرض الجزائر كاملة عند التحميل الأولي فقط
+      if (!fittedRef.current) {
+        fittedRef.current = true;
+        map.fitBounds(DZ_BOUNDS, { padding: 36, duration: 0 });
+      }
       setTimeout(() => {
         try {
           if (!map.areTilesLoaded()) {
@@ -311,14 +331,21 @@ export default function StoreMap({
       let marker = markersRef.current.get(id);
       if (!marker) {
         const el = createMarkerElement();
-        marker = new maplibregl.Marker({ element: el, anchor: "bottom" }).setLngLat([s.longitude, s.latitude]);
+        marker = new maplibregl.Marker({ element: el, anchor: "bottom" }).setLngLat([
+          s.longitude,
+          s.latitude,
+        ]);
         el.addEventListener("click", () => onSelect?.(id));
         marker.addTo(map);
         markersRef.current.set(id, marker);
       } else {
         marker.setLngLat([s.longitude, s.latitude]);
       }
-      applyMarkerStyle((marker.getElement() as HTMLElement), activeId === id, String(store.name ?? ""));
+      applyMarkerStyle(
+        marker.getElement() as HTMLElement,
+        activeId === id,
+        String(store.name ?? ""),
+      );
     });
     markersRef.current.forEach((m, id) => {
       if (!seen.has(id)) {
@@ -338,7 +365,9 @@ export default function StoreMap({
       "width:14px;height:14px;border-radius:9999px;background:" +
       C.green_user +
       ";border:2px solid #fff;box-shadow:0 0 0 4px rgba(16,185,129,.25),0 6px 16px rgba(16,185,129,.35);animation:sooqy-pulse 1.8s ease-in-out infinite;";
-    userMarkerRef.current = new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat([user.lng, user.lat]).addTo(map);
+    userMarkerRef.current = new maplibregl.Marker({ element: el, anchor: "center" })
+      .setLngLat([user.lng, user.lat])
+      .addTo(map);
   }, [user, mapReady]);
 
   const zoomBy = (delta: number) => {
@@ -373,7 +402,11 @@ export default function StoreMap({
 
   return (
     <div className="relative size-full" style={{ width: "100%", height: "100%" }}>
-      <div ref={containerRef} className="absolute inset-0" style={{ width: "100%", height: "100%" }} />
+      <div
+        ref={containerRef}
+        className="absolute inset-0"
+        style={{ width: "100%", height: "100%" }}
+      />
       {DEBUG && containerSize.w === 0 && containerSize.h === 0 && (
         <div className="absolute left-2 top-2 z-10 rounded-md bg-amber-100 px-2 py-1 text-[10px] font-bold text-amber-900 shadow-soft">
           الحاوية 0×0 — تحقق من ارتفاع المسار (bottom-16 + calc(100vh-4rem))
