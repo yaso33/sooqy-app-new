@@ -250,6 +250,55 @@ export default function StoreMap({
         fittedRef.current = true;
         map.fitBounds(DZ_BOUNDS, { padding: 36, duration: 0 });
       }
+      // طبقة حدود الجزائر باللون الأحمر
+      try {
+        if (!map.getSource("dz-bounds")) {
+          map.addSource("dz-bounds", {
+            type: "geojson",
+            data: {
+              type: "Feature",
+              geometry: {
+                type: "Polygon",
+                coordinates: [
+                  [
+                    [DZ_BOUNDS[0][0], DZ_BOUNDS[0][1]],
+                    [DZ_BOUNDS[1][0], DZ_BOUNDS[0][1]],
+                    [DZ_BOUNDS[1][0], DZ_BOUNDS[1][1]],
+                    [DZ_BOUNDS[0][0], DZ_BOUNDS[1][1]],
+                    [DZ_BOUNDS[0][0], DZ_BOUNDS[0][1]],
+                  ],
+                ],
+              },
+              properties: {},
+            },
+          });
+        }
+        if (!map.getLayer("dz-bounds-fill")) {
+          map.addLayer({
+            id: "dz-bounds-fill",
+            type: "fill",
+            source: "dz-bounds",
+            paint: {
+              "fill-color": "#EF4444",
+              "fill-opacity": 0.08,
+            },
+          });
+        }
+        if (!map.getLayer("dz-bounds-line")) {
+          map.addLayer({
+            id: "dz-bounds-line",
+            type: "line",
+            source: "dz-bounds",
+            paint: {
+              "line-color": "#DC2626",
+              "line-width": 2,
+              "line-opacity": 0.9,
+            },
+          });
+        }
+      } catch (e) {
+        console.warn("[StoreMap] تعذّر إضافة طبقة حدود الجزائر:", e);
+      }
       setTimeout(() => {
         try {
           if (!map.areTilesLoaded()) {
