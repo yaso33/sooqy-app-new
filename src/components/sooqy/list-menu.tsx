@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import React, { type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
