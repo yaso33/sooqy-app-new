@@ -20,7 +20,9 @@ export const Route = createFileRoute("/auth")({
     s: Record<string, unknown>,
   ): { redirect?: string | undefined; reset?: boolean } => ({
     redirect:
-      typeof s["redirect"] === "string" && s["redirect"].startsWith("/") && !s["redirect"].startsWith("//")
+      typeof s["redirect"] === "string" &&
+      s["redirect"].startsWith("/") &&
+      !s["redirect"].startsWith("//")
         ? s["redirect"]
         : undefined,
     reset: s["reset"] === "1" || s["reset"] === true || s["reset"] === "true",
@@ -28,7 +30,10 @@ export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
       { title: "تسجيل الدخول — SOOQY" },
-      { name: "description", content: "سجّل الدخول إلى حسابك في SOOQY لحجز المنتجات وتتبع طلباتك." },
+      {
+        name: "description",
+        content: "سجّل الدخول إلى حسابك في SOOQY لحجز المنتجات وتتبع طلباتك.",
+      },
       { property: "og:title", content: "تسجيل الدخول — SOOQY" },
       { property: "og:description", content: "حسابك في منصة التسوق المحلي الجزائرية." },
     ],
@@ -123,15 +128,23 @@ function AuthPage() {
 
   return (
     <div className="space-y-6 px-4 pt-[calc(env(safe-area-inset-top)+1rem)]">
-      <Link to="/" aria-label="رجوع" className="flex size-10 items-center justify-center rounded-full bg-card shadow-soft">
+      <Link
+        to="/"
+        aria-label="رجوع"
+        className="flex size-10 items-center justify-center rounded-full bg-card shadow-soft"
+      >
         <ArrowRight className="size-5" />
       </Link>
       <div className="text-center">
-        <h1 className="text-3xl font-bold">SOOQY 🇩🇿</h1>
+        <h1 className="text-3xl font-bold text-primary">SOOQY</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {reset ? "تعيين كلمة مرور جديدة"
-            : forgot ? "استعادة كلمة المرور"
-            : mode === "in" ? "مرحباً بعودتك" : "أنشئ حسابك خلال ثوانٍ"}
+          {reset
+            ? "تعيين كلمة مرور جديدة"
+            : forgot
+              ? "استعادة كلمة المرور"
+              : mode === "in"
+                ? "مرحباً بعودتك"
+                : "أنشئ حسابك خلال ثوانٍ"}
         </p>
       </div>
 
@@ -153,10 +166,23 @@ function AuthPage() {
 
       <form onSubmit={submit} className="space-y-3">
         {!reset && !forgot && mode === "up" && (
-          <input required value={name} onChange={(e) => setName(e.target.value)} placeholder="الاسم الكامل" className="h-12 w-full rounded-xl border bg-card px-3" />
+          <input
+            required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="الاسم الكامل"
+            className="h-12 w-full rounded-xl border bg-card px-3"
+          />
         )}
         {!reset && (
-          <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="البريد الإلكتروني" className="h-12 w-full rounded-xl border bg-card px-3" />
+          <input
+            required
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="البريد الإلكتروني"
+            className="h-12 w-full rounded-xl border bg-card px-3"
+          />
         )}
         {forgot ? (
           <p className="text-xs leading-relaxed text-muted-foreground">
@@ -164,38 +190,88 @@ function AuthPage() {
           </p>
         ) : reset ? (
           <>
-            <input required type="password" minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="كلمة المرور الجديدة (6 أحرف على الأقل)" className="h-12 w-full rounded-xl border bg-card px-3" />
-            <input required type="password" minLength={6} value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="تأكيد كلمة المرور" className="h-12 w-full rounded-xl border bg-card px-3" />
+            <input
+              required
+              type="password"
+              minLength={6}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="كلمة المرور الجديدة (6 أحرف على الأقل)"
+              className="h-12 w-full rounded-xl border bg-card px-3"
+            />
+            <input
+              required
+              type="password"
+              minLength={6}
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              placeholder="تأكيد كلمة المرور"
+              className="h-12 w-full rounded-xl border bg-card px-3"
+            />
           </>
         ) : (
-          <input required type="password" minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="كلمة المرور (6 أحرف على الأقل)" className="h-12 w-full rounded-xl border bg-card px-3" />
+          <input
+            required
+            type="password"
+            minLength={6}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="كلمة المرور (6 أحرف على الأقل)"
+            className="h-12 w-full rounded-xl border bg-card px-3"
+          />
         )}
-        <button disabled={busy} className="w-full rounded-2xl bg-primary py-3.5 font-bold text-primary-foreground disabled:opacity-50">
-          {busy ? "جارٍ المعالجة..." : reset ? "حفظ كلمة المرور الجديدة" : forgot ? "إرسال رابط الاستعادة" : mode === "in" ? "تسجيل الدخول" : "إنشاء حساب"}
+        <button
+          disabled={busy}
+          className="w-full rounded-2xl bg-primary py-3.5 font-bold text-primary-foreground disabled:opacity-50"
+        >
+          {busy
+            ? "جارٍ المعالجة..."
+            : reset
+              ? "حفظ كلمة المرور الجديدة"
+              : forgot
+                ? "إرسال رابط الاستعادة"
+                : mode === "in"
+                  ? "تسجيل الدخول"
+                  : "إنشاء حساب"}
         </button>
       </form>
 
       {!reset && !forgot && (
         <>
           {mode === "in" && (
-            <button onClick={() => setForgot(true)} className="w-full text-center text-xs font-semibold text-muted-foreground underline">
+            <button
+              onClick={() => setForgot(true)}
+              className="w-full text-center text-xs font-semibold text-muted-foreground underline"
+            >
               نسيت كلمة المرور؟
             </button>
           )}
-          <button onClick={() => setMode(mode === "in" ? "up" : "in")} className="w-full text-sm font-semibold text-primary">
+          <button
+            onClick={() => setMode(mode === "in" ? "up" : "in")}
+            className="w-full text-sm font-semibold text-primary"
+          >
             {mode === "in" ? "ليس لديك حساب؟ أنشئ حساباً جديداً" : "لديك حساب؟ سجّل الدخول"}
           </button>
         </>
       )}
       {forgot && (
-        <button onClick={() => setForgot(false)} className="w-full text-sm font-semibold text-primary">
+        <button
+          onClick={() => setForgot(false)}
+          className="w-full text-sm font-semibold text-primary"
+        >
           العودة لتسجيل الدخول
         </button>
       )}
 
       <p className="text-center text-[11px] leading-relaxed text-muted-foreground">
-        بالمتابعة فإنك توافق على <Link to="/terms" className="underline">شروط الاستخدام</Link>{" "}
-        و<Link to="/privacy" className="underline">سياسة الخصوصية</Link>
+        بالمتابعة فإنك توافق على{" "}
+        <Link to="/terms" className="underline">
+          شروط الاستخدام
+        </Link>{" "}
+        و
+        <Link to="/privacy" className="underline">
+          سياسة الخصوصية
+        </Link>
       </p>
     </div>
   );
