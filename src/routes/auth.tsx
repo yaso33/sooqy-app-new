@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { Browser } from "@capacitor/browser";
 import { Capacitor } from "@capacitor/core";
@@ -52,6 +52,7 @@ function AuthPage() {
   const [confirm, setConfirm] = useState("");
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     if (user && !reset) navigate({ to: (redirect ?? "/") as "/", replace: true });
@@ -190,35 +191,65 @@ function AuthPage() {
           </p>
         ) : reset ? (
           <>
+            <div className="relative">
+              <input
+                required
+                type={showPassword ? "text" : "password"}
+                minLength={6}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="كلمة المرور الجديدة (6 أحرف على الأقل)"
+                className="h-12 w-full rounded-xl border bg-card px-3 pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                aria-label={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
+              >
+                {showPassword ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
+              </button>
+            </div>
+            <div className="relative">
+              <input
+                required
+                type={showPassword ? "text" : "password"}
+                minLength={6}
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                placeholder="تأكيد كلمة المرور"
+                className="h-12 w-full rounded-xl border bg-card px-3 pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                aria-label={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
+              >
+                {showPassword ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="relative">
             <input
               required
-              type="password"
+              type={showPassword ? "text" : "password"}
               minLength={6}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="كلمة المرور الجديدة (6 أحرف على الأقل)"
-              className="h-12 w-full rounded-xl border bg-card px-3"
+              placeholder="كلمة المرور (6 أحرف على الأقل)"
+              className="h-12 w-full rounded-xl border bg-card px-3 pr-10"
             />
-            <input
-              required
-              type="password"
-              minLength={6}
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-              placeholder="تأكيد كلمة المرور"
-              className="h-12 w-full rounded-xl border bg-card px-3"
-            />
-          </>
-        ) : (
-          <input
-            required
-            type="password"
-            minLength={6}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="كلمة المرور (6 أحرف على الأقل)"
-            className="h-12 w-full rounded-xl border bg-card px-3"
-          />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              aria-label={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
+            >
+              {showPassword ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
+            </button>
+          </div>
         )}
         <button
           disabled={busy}
