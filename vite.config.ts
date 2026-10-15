@@ -57,5 +57,13 @@ export default defineConfig(async () => {
     // لا تُضِف optimizeDeps.exclude لـ maplibre-gl: إخراجها من التجميع المسبق
     // يجعل التطوير يخدم المكتبة غير مُجمَّعة (~1000 طلب) فيتأخر ظهور الخريطة.
     // الحل الصحيح لعنوان الـ worker مطبَّق في StoreMap (setWorkerUrl).
+    server: {
+      headers: {
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY",
+        "Referrer-Policy": "strict-origin-when-cross-origin",
+        "X-XSS-Protection": "1; mode=block",
+      },
+    },
   };
 });

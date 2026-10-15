@@ -79,9 +79,23 @@ function pushLog(level: LogEntry["level"], args: unknown[]) {
   if (logs.length > MAX_LOGS) logs.shift();
 }
 
+function sanitizePersistedError(detail: string): string {
+  // إزالة مسارات الملفات الكاملة وأرقام الأسطر من stack traces قبل التخزين المحلي
+  return detail
+    .replace(/\(at [^)]*\)/, "")
+    .replace(/\s+at\s+[\w.$]+\s*\([^)]*\)/, "")
+    .replace(/https?:\/\/[^\s)]+/g, "(رابط محجوب)")
+    .replace(/src\//g, "(مصدر)/")
+    .replace(/node_modules\//g, "(وحدة)/")
+    .slice(0, 4_000);
+}
+
 function saveError(payload: PersistedError) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ ...payload, detail: sanitizePersistedError(payload.detail) }),
+    );
   } catch {
     /* التخزين ممتلئ أو محظور — نتجاهل */
   }
@@ -303,9 +317,7 @@ function onGlobalError(event: ErrorEvent) {
   }
 
   // خطأ JS غير معالج
-  const locationText = event.filename
-    ? `\n${event.filename}:${event.lineno}:${event.colno}`
-    : "";
+  const locationText = event.filename ? `\n${event.filename}:${event.lineno}:${event.colno}` : "";
   const detail = (event.error != null ? describe(event.error) : event.message) + locationText;
   show({
     title: "خطأ غير معالج في التطبيق",
