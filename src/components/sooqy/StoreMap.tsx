@@ -7,40 +7,6 @@ import { MAP_COLORS, OSM_RASTER_FALLBACK, SOOQY_VECTOR_STYLE, VECTOR_SOURCE_ID }
 import type { LatLng } from "@/lib/geo";
 import type { Store } from "@/lib/sooqy";
 
-// حدود الجزائر التقريبية (شكل polygone للحدود الحقيقية) كـ [lng, lat]
-const DZ_BOUNDARY: [number, number][] = [
-  [-8.66, 27.65],
-  [-7.5, 26.5],
-  [-6.0, 25.5],
-  [-4.5, 24.5],
-  [-3.0, 23.5],
-  [-1.5, 23.0],
-  [0.0, 22.5],
-  [2.0, 22.0],
-  [4.0, 21.0],
-  [6.0, 20.0],
-  [8.0, 19.5],
-  [10.0, 19.0],
-  [11.5, 19.2],
-  [12.0, 20.5],
-  [12.2, 25.0],
-  [12.2, 30.0],
-  [11.0, 33.0],
-  [9.0, 35.0],
-  [7.0, 36.0],
-  [5.0, 36.8],
-  [3.5, 37.2],
-  [2.0, 37.0],
-  [0.0, 37.0],
-  [-1.5, 36.5],
-  [-3.0, 35.8],
-  [-5.0, 35.0],
-  [-6.5, 34.0],
-  [-7.5, 33.0],
-  [-8.5, 30.0],
-  [-8.66, 27.65],
-];
-
 const C = MAP_COLORS;
 
 const STORE_ICON =
@@ -169,7 +135,6 @@ export default function StoreMap({
   const userMarkerRef = useRef<maplibregl.Marker | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
-  const fittedRef = useRef(false);
   const [tilesWarn, setTilesWarn] = useState(false);
   const [usedFallback, setUsedFallback] = useState(false);
   const [mapReady, setMapReady] = useState(false);
@@ -273,52 +238,6 @@ export default function StoreMap({
     map.on("load", () => {
       dbg("حدث load — الخريطة جاهزة");
       setMapReady(true);
-      // عرض الجزائر كاملة عند التحميل الأولي فقط
-      if (!fittedRef.current) {
-        fittedRef.current = true;
-        map.fitBounds(DZ_BOUNDARY, { padding: 36, duration: 0 });
-      }
-      // طبقة حدود الجزائر باللون الأحمر
-      try {
-        if (!map.getSource("dz-bounds")) {
-          map.addSource("dz-bounds", {
-            type: "geojson",
-            data: {
-              type: "Feature",
-              geometry: {
-                type: "Polygon",
-                coordinates: [DZ_BOUNDARY],
-              },
-              properties: {},
-            },
-          });
-        }
-        if (!map.getLayer("dz-bounds-fill")) {
-          map.addLayer({
-            id: "dz-bounds-fill",
-            type: "fill",
-            source: "dz-bounds",
-            paint: {
-              "fill-color": "#EF4444",
-              "fill-opacity": 0.08,
-            },
-          });
-        }
-        if (!map.getLayer("dz-bounds-line")) {
-          map.addLayer({
-            id: "dz-bounds-line",
-            type: "line",
-            source: "dz-bounds",
-            paint: {
-              "line-color": "#DC2626",
-              "line-width": 2,
-              "line-opacity": 0.9,
-            },
-          });
-        }
-      } catch (e) {
-        console.warn("[StoreMap] تعذّر إضافة طبقة حدود الجزائر:", e);
-      }
       setTimeout(() => {
         try {
           if (!map.areTilesLoaded()) {
