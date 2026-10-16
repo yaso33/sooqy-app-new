@@ -10,6 +10,7 @@ import {
   Pencil,
   Phone,
   Settings,
+  Shield,
   Store,
   User,
   Wallet,
@@ -49,6 +50,19 @@ function ProfilePage() {
   const profile = useQuery({ queryKey: ["my-profile"], queryFn: fetchMyProfile, enabled: !!user });
   const orders = useQuery({ queryKey: ["my-orders"], queryFn: fetchMyOrders, enabled: !!user });
   const myStore = useQuery({ queryKey: ["my-store"], queryFn: fetchMyStore, enabled: !!user });
+  const roleQuery = useQuery({
+    queryKey: ["my-role", user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user!.id)
+        .single();
+      return data?.role ?? "customer";
+    },
+    enabled: !!user,
+  });
+  const isAdmin = roleQuery.data === "admin";
   const wilayas = useQuery(wilayasQuery);
   const favorites = useFavorites();
 
@@ -155,6 +169,15 @@ function ProfilePage() {
         subtitle="حسابك وبياناتك في مكان واحد"
         action={
           <div className="inline-flex shrink-0 items-center gap-2">
+            {isAdmin && (
+              <Link
+                to="/admin"
+                aria-label="لوحة الإدارة"
+                className="inline-flex shrink-0 items-center justify-center rounded-full bg-amber-500 text-white shadow-soft size-10 transition hover:bg-amber-600 active:scale-95"
+              >
+                <Shield className="size-4.5" />
+              </Link>
+            )}
             <Link
               to="/studio/settings"
               aria-label="متجري"
@@ -245,6 +268,11 @@ function ProfilePage() {
               {myStore.data && (
                 <span className="flex items-center gap-1.5 rounded-full bg-primary-soft px-2.5 py-1 text-xs font-bold text-primary">
                   <Store className="size-3.5" /> تاجر
+                </span>
+              )}
+              {isAdmin && (
+                <span className="flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-700">
+                  <Shield className="size-3.5" /> مدير
                 </span>
               )}
             </div>

@@ -56,7 +56,9 @@ function OrdersPage() {
           <PackageCheck className="size-9 text-primary" strokeWidth={1.6} />
         </span>
         <h1 className="text-h1 text-foreground">سجّل الدخول لعرض طلباتك</h1>
-        <p className="max-w-xs text-body text-muted-foreground">طلباتك وحالاتها ستظهر هنا بعد تسجيل الدخول.</p>
+        <p className="max-w-xs text-body text-muted-foreground">
+          طلباتك وحالاتها ستظهر هنا بعد تسجيل الدخول.
+        </p>
         <Link to="/auth" search={{ redirect: "/orders" }} className="btn-primary mt-2">
           دخول
         </Link>
@@ -121,7 +123,10 @@ function OrdersPage() {
 
       <div className="space-y-3">
         {filtered.map((o) => {
-          const st = STATUS[o.status] ?? { label: o.status, cls: "bg-neutral-200 text-neutral-600" };
+          const st = STATUS[o.status] ?? {
+            label: o.status,
+            cls: "bg-neutral-200 text-neutral-600",
+          };
           const date = new Date(o.created_at).toLocaleDateString("ar-DZ", {
             day: "numeric",
             month: "long",
@@ -137,7 +142,9 @@ function OrdersPage() {
                     {o.wilaya?.name_ar ? ` · ${o.wilaya.name_ar}` : ""}
                   </p>
                 </div>
-                <span className={cn("shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold", st.cls)}>
+                <span
+                  className={cn("shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold", st.cls)}
+                >
                   {st.label}
                 </span>
               </div>
@@ -146,13 +153,18 @@ function OrdersPage() {
                 {(o.items ?? []).slice(0, 3).map((it) => (
                   <div key={it.id} className="flex items-center justify-between gap-2 text-xs">
                     <span className="line-clamp-1 font-semibold text-foreground">
-                      {it.product_name} <span className="text-muted-foreground">× {it.quantity}</span>
+                      {it.product_name}{" "}
+                      <span className="text-muted-foreground">× {it.quantity}</span>
                     </span>
-                    <span className="shrink-0 font-bold text-ink">{formatDA(it.unit_price * it.quantity)}</span>
+                    <span className="shrink-0 font-bold text-ink">
+                      {formatDA(it.unit_price * it.quantity)}
+                    </span>
                   </div>
                 ))}
                 {(o.items ?? []).length > 3 && (
-                  <p className="text-[11px] text-muted-foreground">+ {(o.items ?? []).length - 3} منتجات أخرى</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    + {(o.items ?? []).length - 3} منتجات أخرى
+                  </p>
                 )}
               </div>
 
@@ -164,7 +176,11 @@ function OrdersPage() {
                 <b className="text-price text-primary">{formatDA(o.total)}</b>
               </div>
 
-              <Link to="/orders/$orderId" params={{ orderId: o.id }} className="btn-secondary !h-10 mt-3 w-full text-sm">
+              <Link
+                to="/orders/$orderId"
+                params={{ orderId: o.id }}
+                className="btn-secondary !h-10 mt-3 w-full text-sm"
+              >
                 تتبع الطلب
               </Link>
             </div>

@@ -31,9 +31,14 @@ function NotFoundComponent() {
       <div className="max-w-md text-center">
         <h1 className="text-7xl font-bold text-foreground">404</h1>
         <h2 className="mt-4 text-xl font-semibold text-foreground">الصفحة غير موجودة</h2>
-        <p className="mt-2 text-sm text-muted-foreground">الصفحة التي تبحث عنها غير موجودة أو تغيّرت.</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          الصفحة التي تبحث عنها غير موجودة أو تغيّرت.
+        </p>
         <div className="mt-6">
-          <Link to="/" className="inline-flex items-center justify-center rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground">
+          <Link
+            to="/"
+            className="inline-flex items-center justify-center rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"
+          >
             رجوع للرئيسية
           </Link>
         </div>
@@ -50,7 +55,9 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">تعذّر تحميل الصفحة</h1>
-        <p className="mt-2 text-sm text-muted-foreground">حدث خطأ ما. حاول مرة أخرى أو ارجع إلى الرئيسية.</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          حدث خطأ ما. حاول مرة أخرى أو ارجع إلى الرئيسية.
+        </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => {
@@ -61,7 +68,10 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
           >
             إعادة المحاولة
           </button>
-          <a href="/" className="inline-flex items-center justify-center rounded-xl border bg-card px-4 py-2 text-sm font-medium">
+          <a
+            href="/"
+            className="inline-flex items-center justify-center rounded-xl border bg-card px-4 py-2 text-sm font-medium"
+          >
             الرئيسية
           </a>
         </div>

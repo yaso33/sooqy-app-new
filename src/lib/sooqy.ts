@@ -149,7 +149,10 @@ export async function fetchSuggestedStores(
 /** Increment product view count (fire-and-forget). */
 export async function incrementProductView(productId: string): Promise<void> {
   // RPC موجود في الهجرات (202610120001) — لا مسار احتياطي بـ supabase.raw (غير موجودة في supabase-js v2)
-  const call = supabase.rpc as unknown as (fn: string, vars?: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
+  const call = supabase.rpc as unknown as (
+    fn: string,
+    vars?: Record<string, unknown>,
+  ) => Promise<{ data: unknown; error: unknown }>;
   const { error: rpcError } = await call("increment_product_view", { product_id: productId });
   if (rpcError) throw rpcError;
 }
@@ -544,7 +547,11 @@ export async function uploadImageToBucket(
 // supabase/migrations/202610130001_store_socials_avatar.sql.
 // نفحص وجودها مرة واحدة لكل جلسة ونتكيف تلقائيًا مع القواعد غير المهاجَرة.
 
-let schemaSupport: Promise<{ storeSocials: boolean; avatar: boolean; storeCategories: boolean }> | null = null;
+let schemaSupport: Promise<{
+  storeSocials: boolean;
+  avatar: boolean;
+  storeCategories: boolean;
+}> | null = null;
 
 export function fetchSchemaSupport() {
   if (!schemaSupport) {
@@ -595,6 +602,7 @@ export async function createOrderWithDelivery(
   paymentMethod: "cod" | "baridimob",
   receiptFile: File | null,
   contact: { fullName: string; phone: string; address: string },
+  deliveryCompanyId?: string,
 ) {
   let receiptUrl: string | null = null;
   if (paymentMethod === "baridimob") {
@@ -617,7 +625,52 @@ export async function createOrderWithDelivery(
     ...(receiptUrl ? { _receipt_url: receiptUrl } : {}),
   });
   if (error) throw new Error(friendlyError(error));
-  return data as string;
+  const orderId = data as string;
+
+  // إذا اختار المتجر شركة توصيل، أنشئ شحنة مرتبطة بالطلب
+  if (deliveryCompanyId && deliveryType === "home") {
+    const { data: company } = await supabase
+      .from("delivery_companies")
+      .select("company_name, contact_phone")
+      .eq("id", deliveryCompanyId)
+      .single();
+
+    const coverage = await supabase
+      .from("delivery_coverage_areas")
+      .select("base_fee")
+      .eq("company_id", deliveryCompanyId)
+      .eq("wilaya_id", wilayaId)
+      .maybeSingle();
+
+    const { data: shipment, error: shipError } = await supabase
+      .from("shipments")
+      .insert({
+        order_id: orderId,
+        company_id: deliveryCompanyId,
+        status: "pending",
+        pickup_address: null,
+        delivery_address: contact.address,
+        recipient_name: contact.fullName,
+        recipient_phone: contact.phone,
+        fee: coverage.data?.base_fee ?? null,
+        notes: company
+          ? `الشركة: ${company.company_name} — الهاتف: ${company.contact_phone}`
+          : null,
+      })
+      .select()
+      .single();
+
+    if (shipError) throw shipError;
+
+    // ربط الطلب بالشحنة
+    const { error: linkError } = await supabase
+      .from("orders")
+      .update({ shipment_id: shipment.id, delivery_method: "home" })
+      .eq("id", orderId);
+    if (linkError) throw linkError;
+  }
+
+  return orderId;
 }
 
 // ---------- Merchant ----------
@@ -698,12 +751,9 @@ export async function merchantCreateStore(input: {
     is_verified: true, // التوثيق التلقائي — المتجر يظهر موثقًا فورًا
   };
   if (input.category) payload.category = resolveCategoryId(input.category);
-  if (input.subcategories && input.subcategories.length) payload.subcategories = input.subcategories;
-  const { data, error } = (await supabase
-    .from("stores")
-    .insert(payload)
-    .select()
-    .single()) as any;
+  if (input.subcategories && input.subcategories.length)
+    payload.subcategories = input.subcategories;
+  const { data, error } = await supabase.from("stores").insert(payload).select().single();
   if (error) throw error;
   return data;
 }

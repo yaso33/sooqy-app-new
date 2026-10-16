@@ -24,13 +24,23 @@ export function DynamicIsland() {
   const { user } = useAuth();
   const { count } = useBag();
   const { pathname } = useLocation();
-  const res = useQuery({ queryKey: ["my-reservations"], queryFn: fetchMyReservations, enabled: !!user, refetchInterval: 60000 });
+  const res = useQuery({
+    queryKey: ["my-reservations"],
+    queryFn: fetchMyReservations,
+    enabled: !!user,
+    refetchInterval: 60000,
+  });
   const orders = useQuery({ queryKey: ["my-orders"], queryFn: fetchMyOrders, enabled: !!user });
-  const active = res.data?.find((r) => r.status === "pending" && new Date(r.expires_at).getTime() > Date.now());
+  const active = res.data?.find(
+    (r) => r.status === "pending" && new Date(r.expires_at).getTime() > Date.now(),
+  );
   const shipping = orders.data?.find((o) => o.status === "confirmed" || o.status === "shipped");
   const cd = useCountdown(active?.expires_at ?? null);
 
-  const hideBag = pathname.startsWith("/bag") || pathname.startsWith("/checkout") || pathname.startsWith("/studio");
+  const hideBag =
+    pathname.startsWith("/bag") ||
+    pathname.startsWith("/checkout") ||
+    pathname.startsWith("/studio");
 
   return (
     <>
@@ -45,14 +55,20 @@ export function DynamicIsland() {
                 <span className="flex size-6 items-center justify-center rounded-full bg-primary/20 text-primary">
                   <Clock className="size-3.5" />
                 </span>
-                <span className="font-mono font-bold tracking-widest text-primary">{active.code}</span>
+                <span className="font-mono font-bold tracking-widest text-primary">
+                  {active.code}
+                </span>
                 <span className="opacity-70">الاستلام خلال</span>
                 <span className="font-mono font-bold tabular-nums text-primary">{cd?.label}</span>
               </>
             ) : (
               <>
                 <span className="flex size-6 items-center justify-center rounded-full bg-success/20 text-success">
-                  {shipping!.status === "shipped" ? <Truck className="size-3.5" /> : <PackageCheck className="size-3.5" />}
+                  {shipping!.status === "shipped" ? (
+                    <Truck className="size-3.5" />
+                  ) : (
+                    <PackageCheck className="size-3.5" />
+                  )}
                 </span>
                 <span className="font-bold">
                   {shipping!.status === "shipped" ? "طلبك في الطريق 🚚" : "طلبك مؤكد ✅"}

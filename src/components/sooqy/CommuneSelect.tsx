@@ -31,10 +31,19 @@ export function CommuneSelect({
       required={required}
       aria-label="اختيار البلدية"
       onChange={(e) => onChange(e.target.value || null)}
-      className={cn("h-10 rounded-xl border border-input bg-card px-3 text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500", className)}
+      className={cn(
+        "h-10 rounded-xl border border-input bg-card px-3 text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500",
+        className,
+      )}
       disabled={!wilayaId}
     >
-      {allLabel !== null ? <option value="">{allLabel}</option> : <option value="" disabled>اختر البلدية</option>}
+      {allLabel !== null ? (
+        <option value="">{allLabel}</option>
+      ) : (
+        <option value="" disabled>
+          اختر البلدية
+        </option>
+      )}
       {data.map((c) => (
         <option key={c} value={c}>
           {c}

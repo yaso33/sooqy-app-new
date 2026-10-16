@@ -385,7 +385,7 @@ function Explore() {
       <ImageSearchRow onChange={setVisual} />
 
       {browsing ? (
-       /* ===== وضع التصفح: أقسام ===== */
+        /* ===== وضع التصفح: أقسام ===== */
         <>
           <section className="space-y-3">
             <h2 className="text-h3 text-foreground">تصفّح التصنيفات</h2>

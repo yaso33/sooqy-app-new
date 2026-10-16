@@ -69,10 +69,17 @@ export function ErrorState({
       </span>
 
       <p className="text-sm font-bold text-foreground">{finalTitle}</p>
-      {finalHint && <p className="max-w-xs text-xs leading-relaxed text-muted-foreground">{finalHint}</p>}
+      {finalHint && (
+        <p className="max-w-xs text-xs leading-relaxed text-muted-foreground">{finalHint}</p>
+      )}
 
       {onRetry && (
-        <button type="button" onClick={handleRetry} disabled={retrying} className="btn-secondary mt-1">
+        <button
+          type="button"
+          onClick={handleRetry}
+          disabled={retrying}
+          className="btn-secondary mt-1"
+        >
           <RefreshCw className={cn("size-4", retrying && "animate-spin")} aria-hidden />
           {retrying ? "جارٍ المحاولة…" : "إعادة المحاولة"}
         </button>

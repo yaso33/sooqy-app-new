@@ -1,4 +1,12 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import type { BagItem } from "./sooqy";
 
 type BagCtx = {
@@ -38,11 +46,24 @@ export function BagProvider({ children }: { children: ReactNode }) {
         const existing = items.find((i) => i.offerId === item.offerId);
         persist(
           existing
-            ? items.map((i) => (i.offerId === item.offerId ? { ...i, quantity: Math.min(10, i.quantity + item.quantity), options: item.options } : i))
+            ? items.map((i) =>
+                i.offerId === item.offerId
+                  ? {
+                      ...i,
+                      quantity: Math.min(10, i.quantity + item.quantity),
+                      options: item.options,
+                    }
+                  : i,
+              )
             : [...items, item],
         );
       },
-      setQty: (offerId, qty) => persist(items.map((i) => (i.offerId === offerId ? { ...i, quantity: Math.max(1, Math.min(10, qty)) } : i))),
+      setQty: (offerId, qty) =>
+        persist(
+          items.map((i) =>
+            i.offerId === offerId ? { ...i, quantity: Math.max(1, Math.min(10, qty)) } : i,
+          ),
+        ),
       remove: (offerId) => persist(items.filter((i) => i.offerId !== offerId)),
       clear: () => persist([]),
     }),

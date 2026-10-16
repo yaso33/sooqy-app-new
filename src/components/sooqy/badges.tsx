@@ -10,7 +10,13 @@ export function StockBadge({ level, className }: { level: StockLevel; className?
     out: { text: "نفد من المخزون", cls: "bg-danger-soft text-danger", dot: "bg-danger" },
   }[level];
   return (
-    <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold", map.cls, className)}>
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold",
+        map.cls,
+        className,
+      )}
+    >
       <span className={cn("size-1.5 rounded-full", map.dot)} />
       {map.text}
     </span>
@@ -46,14 +52,14 @@ function getStatusConfig(status: StoreStatus) {
   };
 }
 
-export function OpenBadge({ 
-  open, 
-  className, 
+export function OpenBadge({
+  open,
+  className,
   detailed = false,
-  status 
-}: { 
-  open?: boolean; 
-  className?: string; 
+  status,
+}: {
+  open?: boolean;
+  className?: string;
   detailed?: boolean;
   status?: StoreStatus;
 }) {
@@ -83,11 +89,15 @@ export function OpenBadge({
     <span
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-bold",
-        open ? "bg-success-soft text-success" : "bg-neutral-200 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400",
+        open
+          ? "bg-success-soft text-success"
+          : "bg-neutral-200 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400",
         className,
       )}
     >
-      <span className={cn("size-1.5 rounded-full", open ? "bg-success live-dot" : "bg-neutral-500")} />
+      <span
+        className={cn("size-1.5 rounded-full", open ? "bg-success live-dot" : "bg-neutral-500")}
+      />
       {open ? "مفتوح الآن" : "مغلق"}
     </span>
   );
@@ -95,7 +105,9 @@ export function OpenBadge({
 
 export function VerifiedBadge({ className }: { className?: string }) {
   return (
-    <span className={cn("inline-flex items-center gap-1 text-[11px] font-bold text-primary", className)}>
+    <span
+      className={cn("inline-flex items-center gap-1 text-[11px] font-bold text-primary", className)}
+    >
       <BadgeCheck className="size-3.5" /> متجر موثق
     </span>
   );

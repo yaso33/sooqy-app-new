@@ -51,10 +51,7 @@ import {
   parentOf,
   resolveCategoryId,
 } from "@/lib/taxonomy";
-import {
-  MainCategoryPicker,
-  SubcategoryMultiSelect,
-} from "@/components/sooqy/category-tiles";
+import { MainCategoryPicker, SubcategoryMultiSelect } from "@/components/sooqy/category-tiles";
 import { WilayaSelect } from "@/components/sooqy/WilayaSelect";
 import { DirectionsButton } from "@/components/sooqy/DirectionsButton";
 import { ConfirmDialog } from "@/components/sooqy/confirm-dialog";
@@ -346,7 +343,12 @@ function StudioPage() {
                       st.isOpen ? "bg-success-soft text-success" : "bg-muted text-muted-foreground",
                     )}
                   >
-                    <span className={cn("size-1.5 rounded-full", st.isOpen ? "bg-success" : "bg-muted-foreground")} />
+                    <span
+                      className={cn(
+                        "size-1.5 rounded-full",
+                        st.isOpen ? "bg-success" : "bg-muted-foreground",
+                      )}
+                    />
                     {st.isOpen ? "مفتوح الآن" : "مغلق حاليًا"}
                   </span>
                 );
@@ -462,7 +464,11 @@ function StudioPage() {
                   >
                     {i.done && <Check className="size-2.5" />}
                   </span>
-                  <span className={i.done ? "text-muted-foreground line-through" : "font-bold text-foreground"}>
+                  <span
+                    className={
+                      i.done ? "text-muted-foreground line-through" : "font-bold text-foreground"
+                    }
+                  >
                     {i.label}
                   </span>
                 </li>
@@ -560,9 +566,7 @@ function StudioPage() {
             </span>
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-bold text-foreground">الموقع وساعات العمل</span>
-              <span className="block text-xs text-muted-foreground">
-                إدارة الموقع وأوقات العمل
-              </span>
+              <span className="block text-xs text-muted-foreground">إدارة الموقع وأوقات العمل</span>
             </span>
             <ChevronLeft className="size-4 shrink-0 text-muted-foreground" />
           </Link>
@@ -1215,7 +1219,13 @@ function MerchantOnboarding({
           <MainCategoryPicker
             value={form.category}
             onChange={(category) =>
-              setForm((f) => ({ ...f, category, subcategories: f.subcategories.filter((x) => childrenOf(category).some((c) => c.id === x)) }))
+              setForm((f) => ({
+                ...f,
+                category,
+                subcategories: f.subcategories.filter((x) =>
+                  childrenOf(category).some((c) => c.id === x),
+                ),
+              }))
             }
           />
           {form.category && (

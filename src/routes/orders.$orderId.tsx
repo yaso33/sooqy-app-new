@@ -1,9 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, Check, MapPin, Package, Truck, XCircle } from "lucide-react";
+import {
+  ArrowRight,
+  Check,
+  MapPin,
+  Package,
+  Truck,
+  XCircle,
+  Truck as TruckIcon,
+} from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { formatDA } from "@/lib/geo";
 import { fetchMyOrders } from "@/lib/sooqy";
+import { fetchOrderWithShipment, SHIPMENT_STATUS_LABELS } from "@/lib/delivery";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/orders/$orderId")({
@@ -29,8 +38,15 @@ function TrackPage() {
   const { user, ready } = useAuth();
   const orders = useQuery({ queryKey: ["my-orders"], queryFn: fetchMyOrders, enabled: !!user });
 
+  const shipment = useQuery({
+    queryKey: ["order-shipment", orderId],
+    queryFn: () => fetchOrderWithShipment(orderId),
+    enabled: !!user && !!orderId,
+  });
+
   if (!ready) return null;
   const order = orders.data?.find((o) => o.id === orderId);
+  const orderShipment = shipment.data?.shipment;
 
   if (!user) {
     return (
@@ -120,9 +136,22 @@ function TrackPage() {
                     {done ? <Check className="size-4" /> : <Package className="size-4" />}
                   </span>
                   <div className="min-w-0 pt-1">
-                    <p className={cn("text-sm font-bold", current ? "text-primary" : done ? "text-foreground" : "text-muted-foreground")}>
+                    <p
+                      className={cn(
+                        "text-sm font-bold",
+                        current
+                          ? "text-primary"
+                          : done
+                            ? "text-foreground"
+                            : "text-muted-foreground",
+                      )}
+                    >
                       {step.label}
-                      {current && <span className="mr-2 text-[10px] font-semibold text-primary">● الحالي</span>}
+                      {current && (
+                        <span className="mr-2 text-[10px] font-semibold text-primary">
+                          ● الحالي
+                        </span>
+                      )}
                     </p>
                     <p className="mt-0.5 text-xs text-muted-foreground">{step.desc}</p>
                   </div>
@@ -142,7 +171,9 @@ function TrackPage() {
               <span className="line-clamp-1 font-semibold text-foreground">
                 {it.product_name} <span className="text-muted-foreground">× {it.quantity}</span>
               </span>
-              <span className="shrink-0 font-bold text-ink">{formatDA(it.unit_price * it.quantity)}</span>
+              <span className="shrink-0 font-bold text-ink">
+                {formatDA(it.unit_price * it.quantity)}
+              </span>
             </div>
           ))}
         </div>
@@ -175,9 +206,52 @@ function TrackPage() {
         </div>
       </div>
 
+      {orderShipment && (
+        <div className="space-y-3 rounded-2xl border border-border bg-card p-4">
+          <h2 className="text-h3 text-foreground flex items-center gap-2">
+            <TruckIcon className="size-5" /> حالة التوصيل
+          </h2>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-foreground">
+                {SHIPMENT_STATUS_LABELS[
+                  orderShipment.status as keyof typeof SHIPMENT_STATUS_LABELS
+                ] ?? orderShipment.status}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                شركة التوصيل · تم التحديث{" "}
+                {new Date(orderShipment.updated_at).toLocaleDateString("ar-DZ")}
+              </p>
+            </div>
+            <BadgeStatus status={orderShipment.status} />
+          </div>
+          {orderShipment.notes && (
+            <p className="text-sm text-muted-foreground italic">{orderShipment.notes}</p>
+          )}
+        </div>
+      )}
+
       <Link to="/explore" className="btn-secondary w-full">
         <Truck className="size-4" /> مواصلة التسوق
       </Link>
     </div>
+  );
+}
+
+function BadgeStatus({ status }: { status: string }) {
+  const variants: Record<string, string> = {
+    pending: "bg-yellow-100 text-yellow-800",
+    accepted: "bg-blue-100 text-blue-800",
+    picked_up: "bg-indigo-100 text-indigo-800",
+    in_transit: "bg-purple-100 text-purple-800",
+    delivered: "bg-green-100 text-green-800",
+    failed: "bg-red-100 text-red-800",
+    returned: "bg-gray-100 text-gray-800",
+  };
+
+  return (
+    <span className={cn("px-2 py-1 rounded-full text-xs font-medium", variants[status])}>
+      {SHIPMENT_STATUS_LABELS[status as keyof typeof SHIPMENT_STATUS_LABELS] ?? status}
+    </span>
   );
 }

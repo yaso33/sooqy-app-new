@@ -3,7 +3,14 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { ArrowRight, Heart } from "lucide-react";
 import { useGeo } from "@/lib/geo";
-import { getProductComparisonOffers, getStore, primaryImage, storeDistance, type ProductGroup, type Store } from "@/lib/sooqy";
+import {
+  getProductComparisonOffers,
+  getStore,
+  primaryImage,
+  storeDistance,
+  type ProductGroup,
+  type Store,
+} from "@/lib/sooqy";
 import { useFavorites } from "@/lib/favorites";
 import { ProductCard, StoreCard } from "@/components/sooqy/cards";
 import { EmptyState } from "@/components/sooqy/empty-state";

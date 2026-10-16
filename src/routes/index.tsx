@@ -3,11 +3,7 @@ import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Bell, MapPin, Search } from "lucide-react";
 import { useGeo } from "@/lib/geo";
-import {
-  fetchHomepageOffers,
-  fetchMostViewedGroups,
-  searchProducts,
-} from "@/lib/sooqy";
+import { fetchHomepageOffers, fetchMostViewedGroups, searchProducts } from "@/lib/sooqy";
 import { OfferCard, ProductCard } from "@/components/sooqy/cards";
 import { WilayaButton } from "@/components/sooqy/WilayaSelect";
 import { ProductGridSkeleton } from "@/components/sooqy/skeleton";

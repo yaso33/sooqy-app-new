@@ -26,7 +26,13 @@ export function StoreCardSkeleton({ className }: { className?: string }) {
   );
 }
 
-export function ProductGridSkeleton({ count = 6, className }: { count?: number; className?: string }) {
+export function ProductGridSkeleton({
+  count = 6,
+  className,
+}: {
+  count?: number;
+  className?: string;
+}) {
   return (
     <div className={cn("grid grid-cols-2 gap-3", className)}>
       {Array.from({ length: count }).map((_, i) => (

@@ -72,9 +72,18 @@ export function WilayaSelect({
       required={required}
       aria-label="اختيار الولاية"
       onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
-      className={cn("h-10 rounded-xl border border-input bg-card px-3 text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500", className)}
+      className={cn(
+        "h-10 rounded-xl border border-input bg-card px-3 text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500",
+        className,
+      )}
     >
-      {allLabel !== null ? <option value="">{allLabel}</option> : <option value="" disabled>اختر الولاية</option>}
+      {allLabel !== null ? (
+        <option value="">{allLabel}</option>
+      ) : (
+        <option value="" disabled>
+          اختر الولاية
+        </option>
+      )}
       {data.map((w) => (
         <option key={w.id} value={w.id}>
           {String(w.id).padStart(2, "0")} - {w.name_ar}

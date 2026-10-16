@@ -23,7 +23,9 @@ export const Route = createFileRoute("/auth_/callback")({
 
 function safePath(p: string | null) {
   // يمنع إعادة التوجيه لمواقع خارجية: يرفض البروتوكول النسبي // و /\ (بعض المتصفحات تفسر \ كـ /)
-  return p && p.startsWith("/") && !p.startsWith("//") && !p.startsWith("/\\") && !p.includes("\\") ? p : "/";
+  return p && p.startsWith("/") && !p.startsWith("//") && !p.startsWith("/\\") && !p.includes("\\")
+    ? p
+    : "/";
 }
 
 function CallbackPage() {

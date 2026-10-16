@@ -32,7 +32,15 @@ function visibleCategories(list: CategoryNode[], counts: CategoryCounts): Catego
 }
 
 /** بطاقة تصنيف رئيسي — أيقونة متدرّجة، اسم، وصف قصير، وعدّاد منتجات */
-function CategoryTile({ node, count, index }: { node: CategoryNode; count: number | null; index: number }) {
+function CategoryTile({
+  node,
+  count,
+  index,
+}: {
+  node: CategoryNode;
+  count: number | null;
+  index: number;
+}) {
   return (
     <Reveal index={index}>
       <Link
@@ -89,7 +97,12 @@ export function CategoryGrid({
   return (
     <div className={cn("grid grid-cols-2 gap-3", className)}>
       {list.map((c, i) => (
-        <CategoryTile key={c.id} node={c} count={counts ? sumCounts(counts, c.id) : null} index={i} />
+        <CategoryTile
+          key={c.id}
+          node={c}
+          count={counts ? sumCounts(counts, c.id) : null}
+          index={i}
+        />
       ))}
     </div>
   );
@@ -164,7 +177,10 @@ export function CategoryBreadcrumb({ categoryId }: { categoryId: string }) {
   const isSub = !!parent && parent.id !== active;
 
   return (
-    <nav aria-label="مسار التصنيف" className="flex flex-wrap items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
+    <nav
+      aria-label="مسار التصنيف"
+      className="flex flex-wrap items-center gap-1.5 text-[11px] font-semibold text-muted-foreground"
+    >
       <Link to="/" className="transition-colors hover:text-primary">
         الرئيسية
       </Link>
@@ -224,7 +240,9 @@ export function SubcategoryMultiSelect({
                 : "border-border bg-card text-muted-foreground",
             )}
           >
-            <span className={cn("text-sm", selected && "opacity-100")}>{selected ? "✓" : c.emoji}</span>
+            <span className={cn("text-sm", selected && "opacity-100")}>
+              {selected ? "✓" : c.emoji}
+            </span>
             {c.label}
           </button>
         );
@@ -256,7 +274,12 @@ export function MainCategoryPicker({
               : "border-border bg-card text-muted-foreground",
           )}
         >
-          <span className={cn("flex size-8 items-center justify-center rounded-xl bg-gradient-to-br text-base", categoryGradient(c.id))}>
+          <span
+            className={cn(
+              "flex size-8 items-center justify-center rounded-xl bg-gradient-to-br text-base",
+              categoryGradient(c.id),
+            )}
+          >
             {c.emoji}
           </span>
           <span className="leading-snug">{c.label}</span>

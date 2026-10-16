@@ -22,7 +22,6 @@ export function useVisualOrder<T extends { product: { id: string }; image?: stri
     return () => {
       alive = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, items]);
 
   return ranked ?? items;

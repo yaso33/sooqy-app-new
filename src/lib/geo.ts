@@ -20,7 +20,8 @@ export function formatKm(km: number | null | undefined) {
 }
 
 export function directionsUrl(lat?: number | null, lng?: number | null, label?: string) {
-  if (lat != null && lng != null) return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+  if (lat != null && lng != null)
+    return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(label ?? "")}`;
 }
 
@@ -85,9 +86,12 @@ export function geoPermission(): Promise<GeoPermission> {
 export async function askPermission(): Promise<boolean> {
   // `Permissions.request` غير مُعرَّف في تعريفات TypeScript،
   // وغير موجود أصلًا في Chrome/Safari (يوجد في Firefox و WebView).
-  const perms = typeof navigator === "undefined" ? undefined : (navigator.permissions as unknown as {
-    request?: (desc: { name: string }) => Promise<{ state: string }>;
-  });
+  const perms =
+    typeof navigator === "undefined"
+      ? undefined
+      : (navigator.permissions as unknown as {
+          request?: (desc: { name: string }) => Promise<{ state: string }>;
+        });
   if (!perms?.request) return false;
   try {
     const res = await perms.request({ name: "geolocation" });
@@ -272,7 +276,7 @@ export function getStoreStatus(h: unknown, now = new Date()): StoreStatus {
       opensToday = true;
     } else {
       // Opens tomorrow
-      minsUntilOpen = (24 * 60 - currentMins) + openMins;
+      minsUntilOpen = 24 * 60 - currentMins + openMins;
       opensToday = false;
     }
 

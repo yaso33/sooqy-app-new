@@ -53,7 +53,11 @@ function hueDistance(h1: number, h2: number): number {
 }
 
 /** يحسب البصمة البصرية من بيانات بكسل RGBA */
-export function profileFromPixels(data: Uint8ClampedArray, width: number, height: number): VisualProfile {
+export function profileFromPixels(
+  data: Uint8ClampedArray,
+  width: number,
+  height: number,
+): VisualProfile {
   const buckets = new Map<number, number>();
   let white = 0;
   let transparent = 0;
@@ -117,11 +121,7 @@ export function profileFromPixels(data: Uint8ClampedArray, width: number, height
 function hexToHsl(hex: string): [number, number, number] {
   const m = /^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(hex.trim());
   if (!m) return [0, 0, 0.5];
-  return rgbToHsl(
-    parseInt(m[1] ?? "0", 16),
-    parseInt(m[2] ?? "0", 16),
-    parseInt(m[3] ?? "0", 16),
-  );
+  return rgbToHsl(parseInt(m[1] ?? "0", 16), parseInt(m[2] ?? "0", 16), parseInt(m[3] ?? "0", 16));
 }
 
 /** تشابه بصري بين صورتين — 0 (لا التشابه) .. 1 */

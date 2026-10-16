@@ -82,7 +82,8 @@ if (Capacitor.isNativePlatform()) {
   App.addListener("appUrlOpen", ({ url }) => {
     try {
       const u = new URL(url);
-      if (u.protocol !== "com.sooqy.app:" || u.host !== "auth" || u.pathname !== "/callback") return;
+      if (u.protocol !== "com.sooqy.app:" || u.host !== "auth" || u.pathname !== "/callback")
+        return;
       const search: { reset: boolean; code?: string | undefined } = {
         reset: u.searchParams.get("reset") === "1",
         code: u.searchParams.get("code") ?? undefined,

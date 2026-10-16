@@ -43,7 +43,13 @@ export function Carousel({
       <div ref={emblaRef} className="overflow-hidden">
         <div className="flex touch-pan-y">
           {children.map((child, i) => (
-            <div key={i} className={cn("min-w-0 shrink-0 grow-0 basis-[85%] pl-3 first:pl-0 sm:basis-[60%]", slideClassName)}>
+            <div
+              key={i}
+              className={cn(
+                "min-w-0 shrink-0 grow-0 basis-[85%] pl-3 first:pl-0 sm:basis-[60%]",
+                slideClassName,
+              )}
+            >
               {child}
             </div>
           ))}

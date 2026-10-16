@@ -15,7 +15,9 @@ export function QtyStepper({
   className?: string;
 }) {
   return (
-    <div className={cn("inline-flex items-center gap-1 rounded-full border bg-card p-1", className)}>
+    <div
+      className={cn("inline-flex items-center gap-1 rounded-full border bg-card p-1", className)}
+    >
       <button
         type="button"
         aria-label="إنقاص الكمية"

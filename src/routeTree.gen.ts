@@ -14,6 +14,8 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as BagRouteImport } from './routes/bag'
 import { Route as CheckoutRouteImport } from './routes/checkout'
+import { Route as DeliveryDashboardRouteImport } from './routes/delivery-dashboard'
+import { Route as DeliveryRegisterRouteImport } from './routes/delivery-register'
 import { Route as ExploreRouteImport } from './routes/explore'
 import { Route as FavoritesRouteImport } from './routes/favorites'
 import { Route as HelpRouteImport } from './routes/help'
@@ -23,6 +25,8 @@ import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as AdminDeliveryCompaniesRouteImport } from './routes/admin.delivery-companies'
 import { Route as AuthCallbackRouteImport } from './routes/auth_.callback'
 import { Route as CategoryCatIdRouteImport } from './routes/category.$catId'
 import { Route as OrdersIndexRouteImport } from './routes/orders.index'
@@ -32,6 +36,7 @@ import { Route as StoresIndexRouteImport } from './routes/stores.index'
 import { Route as StoresStoreIdRouteImport } from './routes/stores.$storeId'
 import { Route as StudioIndexRouteImport } from './routes/studio.index'
 import { Route as StudioSettingsRouteImport } from './routes/studio.settings'
+import { Route as StudioShipmentsRouteImport } from './routes/studio.shipments'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -56,6 +61,16 @@ const BagRoute = BagRouteImport.update({
 const CheckoutRoute = CheckoutRouteImport.update({
   id: '/checkout',
   path: '/checkout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DeliveryDashboardRoute = DeliveryDashboardRouteImport.update({
+  id: '/delivery-dashboard',
+  path: '/delivery-dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DeliveryRegisterRoute = DeliveryRegisterRouteImport.update({
+  id: '/delivery-register',
+  path: '/delivery-register',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ExploreRoute = ExploreRouteImport.update({
@@ -103,6 +118,16 @@ const TermsRoute = TermsRouteImport.update({
   path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminDeliveryCompaniesRoute = AdminDeliveryCompaniesRouteImport.update({
+  id: '/admin/delivery-companies',
+  path: '/admin/delivery-companies',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthCallbackRoute = AuthCallbackRouteImport.update({
   id: '/auth_/callback',
   path: '/auth/callback',
@@ -148,6 +173,11 @@ const StudioSettingsRoute = StudioSettingsRouteImport.update({
   path: '/studio/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StudioShipmentsRoute = StudioShipmentsRouteImport.update({
+  id: '/studio/shipments',
+  path: '/studio/shipments',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -155,6 +185,8 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/bag': typeof BagRoute
   '/checkout': typeof CheckoutRoute
+  '/delivery-dashboard': typeof DeliveryDashboardRoute
+  '/delivery-register': typeof DeliveryRegisterRoute
   '/explore': typeof ExploreRoute
   '/favorites': typeof FavoritesRoute
   '/help': typeof HelpRoute
@@ -164,12 +196,15 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/settings': typeof SettingsRoute
   '/terms': typeof TermsRoute
+  '/admin/delivery-companies': typeof AdminDeliveryCompaniesRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/category/$catId': typeof CategoryCatIdRoute
   '/orders/$orderId': typeof OrdersOrderIdRoute
   '/products/$productId': typeof ProductsProductIdRoute
   '/stores/$storeId': typeof StoresStoreIdRoute
   '/studio/settings': typeof StudioSettingsRoute
+  '/studio/shipments': typeof StudioShipmentsRoute
+  '/admin/': typeof AdminIndexRoute
   '/orders/': typeof OrdersIndexRoute
   '/stores/': typeof StoresIndexRoute
   '/studio/': typeof StudioIndexRoute
@@ -180,6 +215,8 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/bag': typeof BagRoute
   '/checkout': typeof CheckoutRoute
+  '/delivery-dashboard': typeof DeliveryDashboardRoute
+  '/delivery-register': typeof DeliveryRegisterRoute
   '/explore': typeof ExploreRoute
   '/favorites': typeof FavoritesRoute
   '/help': typeof HelpRoute
@@ -189,12 +226,15 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/settings': typeof SettingsRoute
   '/terms': typeof TermsRoute
+  '/admin/delivery-companies': typeof AdminDeliveryCompaniesRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/category/$catId': typeof CategoryCatIdRoute
   '/orders/$orderId': typeof OrdersOrderIdRoute
   '/products/$productId': typeof ProductsProductIdRoute
   '/stores/$storeId': typeof StoresStoreIdRoute
   '/studio/settings': typeof StudioSettingsRoute
+  '/studio/shipments': typeof StudioShipmentsRoute
+  '/admin': typeof AdminIndexRoute
   '/orders': typeof OrdersIndexRoute
   '/stores': typeof StoresIndexRoute
   '/studio': typeof StudioIndexRoute
@@ -206,6 +246,8 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/bag': typeof BagRoute
   '/checkout': typeof CheckoutRoute
+  '/delivery-dashboard': typeof DeliveryDashboardRoute
+  '/delivery-register': typeof DeliveryRegisterRoute
   '/explore': typeof ExploreRoute
   '/favorites': typeof FavoritesRoute
   '/help': typeof HelpRoute
@@ -215,12 +257,15 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/settings': typeof SettingsRoute
   '/terms': typeof TermsRoute
+  '/admin/delivery-companies': typeof AdminDeliveryCompaniesRoute
   '/auth_/callback': typeof AuthCallbackRoute
   '/category/$catId': typeof CategoryCatIdRoute
   '/orders/$orderId': typeof OrdersOrderIdRoute
   '/products/$productId': typeof ProductsProductIdRoute
   '/stores/$storeId': typeof StoresStoreIdRoute
   '/studio/settings': typeof StudioSettingsRoute
+  '/studio/shipments': typeof StudioShipmentsRoute
+  '/admin/': typeof AdminIndexRoute
   '/orders/': typeof OrdersIndexRoute
   '/stores/': typeof StoresIndexRoute
   '/studio/': typeof StudioIndexRoute
@@ -233,6 +278,8 @@ export interface FileRouteTypes {
     | '/auth'
     | '/bag'
     | '/checkout'
+    | '/delivery-dashboard'
+    | '/delivery-register'
     | '/explore'
     | '/favorites'
     | '/help'
@@ -242,12 +289,15 @@ export interface FileRouteTypes {
     | '/profile'
     | '/settings'
     | '/terms'
+    | '/admin/delivery-companies'
     | '/auth/callback'
     | '/category/$catId'
     | '/orders/$orderId'
     | '/products/$productId'
     | '/stores/$storeId'
     | '/studio/settings'
+    | '/studio/shipments'
+    | '/admin/'
     | '/orders/'
     | '/stores/'
     | '/studio/'
@@ -258,6 +308,8 @@ export interface FileRouteTypes {
     | '/auth'
     | '/bag'
     | '/checkout'
+    | '/delivery-dashboard'
+    | '/delivery-register'
     | '/explore'
     | '/favorites'
     | '/help'
@@ -267,12 +319,15 @@ export interface FileRouteTypes {
     | '/profile'
     | '/settings'
     | '/terms'
+    | '/admin/delivery-companies'
     | '/auth/callback'
     | '/category/$catId'
     | '/orders/$orderId'
     | '/products/$productId'
     | '/stores/$storeId'
     | '/studio/settings'
+    | '/studio/shipments'
+    | '/admin'
     | '/orders'
     | '/stores'
     | '/studio'
@@ -283,6 +338,8 @@ export interface FileRouteTypes {
     | '/auth'
     | '/bag'
     | '/checkout'
+    | '/delivery-dashboard'
+    | '/delivery-register'
     | '/explore'
     | '/favorites'
     | '/help'
@@ -292,12 +349,15 @@ export interface FileRouteTypes {
     | '/profile'
     | '/settings'
     | '/terms'
+    | '/admin/delivery-companies'
     | '/auth_/callback'
     | '/category/$catId'
     | '/orders/$orderId'
     | '/products/$productId'
     | '/stores/$storeId'
     | '/studio/settings'
+    | '/studio/shipments'
+    | '/admin/'
     | '/orders/'
     | '/stores/'
     | '/studio/'
@@ -309,6 +369,8 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   BagRoute: typeof BagRoute
   CheckoutRoute: typeof CheckoutRoute
+  DeliveryDashboardRoute: typeof DeliveryDashboardRoute
+  DeliveryRegisterRoute: typeof DeliveryRegisterRoute
   ExploreRoute: typeof ExploreRoute
   FavoritesRoute: typeof FavoritesRoute
   HelpRoute: typeof HelpRoute
@@ -318,12 +380,15 @@ export interface RootRouteChildren {
   ProfileRoute: typeof ProfileRoute
   SettingsRoute: typeof SettingsRoute
   TermsRoute: typeof TermsRoute
+  AdminDeliveryCompaniesRoute: typeof AdminDeliveryCompaniesRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   CategoryCatIdRoute: typeof CategoryCatIdRoute
   OrdersOrderIdRoute: typeof OrdersOrderIdRoute
   ProductsProductIdRoute: typeof ProductsProductIdRoute
   StoresStoreIdRoute: typeof StoresStoreIdRoute
   StudioSettingsRoute: typeof StudioSettingsRoute
+  StudioShipmentsRoute: typeof StudioShipmentsRoute
+  AdminIndexRoute: typeof AdminIndexRoute
   OrdersIndexRoute: typeof OrdersIndexRoute
   StoresIndexRoute: typeof StoresIndexRoute
   StudioIndexRoute: typeof StudioIndexRoute
@@ -364,6 +429,20 @@ declare module '@tanstack/react-router' {
       path: '/checkout'
       fullPath: '/checkout'
       preLoaderRoute: typeof CheckoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/delivery-dashboard': {
+      id: '/delivery-dashboard'
+      path: '/delivery-dashboard'
+      fullPath: '/delivery-dashboard'
+      preLoaderRoute: typeof DeliveryDashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/delivery-register': {
+      id: '/delivery-register'
+      path: '/delivery-register'
+      fullPath: '/delivery-register'
+      preLoaderRoute: typeof DeliveryRegisterRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/explore': {
@@ -429,6 +508,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/': {
+      id: '/admin/'
+      path: '/admin'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/delivery-companies': {
+      id: '/admin/delivery-companies'
+      path: '/admin/delivery-companies'
+      fullPath: '/admin/delivery-companies'
+      preLoaderRoute: typeof AdminDeliveryCompaniesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth_/callback': {
       id: '/auth_/callback'
       path: '/auth/callback'
@@ -492,6 +585,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StudioSettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/studio/shipments': {
+      id: '/studio/shipments'
+      path: '/studio/shipments'
+      fullPath: '/studio/shipments'
+      preLoaderRoute: typeof StudioShipmentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -501,6 +601,8 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   BagRoute: BagRoute,
   CheckoutRoute: CheckoutRoute,
+  DeliveryDashboardRoute: DeliveryDashboardRoute,
+  DeliveryRegisterRoute: DeliveryRegisterRoute,
   ExploreRoute: ExploreRoute,
   FavoritesRoute: FavoritesRoute,
   HelpRoute: HelpRoute,
@@ -510,12 +612,15 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileRoute: ProfileRoute,
   SettingsRoute: SettingsRoute,
   TermsRoute: TermsRoute,
+  AdminDeliveryCompaniesRoute: AdminDeliveryCompaniesRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   CategoryCatIdRoute: CategoryCatIdRoute,
   OrdersOrderIdRoute: OrdersOrderIdRoute,
   ProductsProductIdRoute: ProductsProductIdRoute,
   StoresStoreIdRoute: StoresStoreIdRoute,
   StudioSettingsRoute: StudioSettingsRoute,
+  StudioShipmentsRoute: StudioShipmentsRoute,
+  AdminIndexRoute: AdminIndexRoute,
   OrdersIndexRoute: OrdersIndexRoute,
   StoresIndexRoute: StoresIndexRoute,
   StudioIndexRoute: StudioIndexRoute,

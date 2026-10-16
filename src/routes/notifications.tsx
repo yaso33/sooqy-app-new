@@ -36,11 +36,7 @@ function NotificationsPage() {
     <div className="px-4 pt-4">
       <header className="flex items-center justify-between py-1">
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => window.history.back()}
-            aria-label="رجوع"
-            className="icon-btn"
-          >
+          <button onClick={() => window.history.back()} aria-label="رجوع" className="icon-btn">
             <ArrowRight className="size-5" />
           </button>
           <h1 className="text-h2 text-foreground">الإشعارات</h1>

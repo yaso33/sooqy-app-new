@@ -22,7 +22,10 @@ function BagPage() {
   const bag = useBag();
   const ids = bag.items.map((i) => i.offerId);
   const offers = useQuery({ queryKey: ["bag-offers", ids], queryFn: () => getOffersByIds(ids) });
-  const rows = bag.items.map((i) => ({ ...i, offer: offers.data?.find((o) => o.id === i.offerId) }));
+  const rows = bag.items.map((i) => ({
+    ...i,
+    offer: offers.data?.find((o) => o.id === i.offerId),
+  }));
 
   // التجميع حسب المتجر
   const groups = new Map<string, typeof rows>();
@@ -62,10 +65,7 @@ function BagPage() {
           title="سلتك فارغة"
           hint="أضف منتجات من المتاجر القريبة منك وارجع لإتمام الطلب."
           action={
-            <Link
-              to="/explore"
-              className="btn-primary"
-            >
+            <Link to="/explore" className="btn-primary">
               تصفح المنتجات
             </Link>
           }
@@ -81,7 +81,10 @@ function BagPage() {
           </h2>
           <div className="space-y-2">
             {items.map((r) => (
-              <div key={r.offerId} className="flex gap-3 rounded-2xl border border-border bg-card p-3">
+              <div
+                key={r.offerId}
+                className="flex gap-3 rounded-2xl border border-border bg-card p-3"
+              >
                 {r.offer ? (
                   <Link
                     to="/products/$productId"
@@ -89,14 +92,20 @@ function BagPage() {
                     className="size-20 shrink-0 overflow-hidden rounded-xl bg-neutral-100"
                   >
                     {primaryImage(r.offer.images) && (
-                      <img src={primaryImage(r.offer.images)!} alt="" className="size-full object-cover" />
+                      <img
+                        src={primaryImage(r.offer.images)!}
+                        alt=""
+                        className="size-full object-cover"
+                      />
                     )}
                   </Link>
                 ) : (
                   <div className="size-20 shrink-0 animate-pulse rounded-xl bg-muted" />
                 )}
                 <div className="min-w-0 flex-1 space-y-1">
-                  <p className="line-clamp-1 text-sm font-semibold">{r.offer?.product.name ?? "..."}</p>
+                  <p className="line-clamp-1 text-sm font-semibold">
+                    {r.offer?.product.name ?? "..."}
+                  </p>
                   <p className="text-xs text-muted-foreground">
                     {r.offer?.store.name} {Object.values(r.options).join(" · ")}
                   </p>
@@ -163,10 +172,7 @@ function BagPage() {
               </span>
               <b className="text-h3 text-primary">{formatDA(total)}</b>
             </div>
-            <Link
-              to="/checkout"
-              className="btn-primary mt-3 w-full"
-            >
+            <Link to="/checkout" className="btn-primary mt-3 w-full">
               متابعة الطلب <ArrowLeft className="size-4" />
             </Link>
           </div>

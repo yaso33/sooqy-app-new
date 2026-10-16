@@ -45,7 +45,10 @@ describe("taxonomy — تماسك الشجرة", () => {
   });
 
   it("كل تصنيف له تسمية وإيموجي ووصف الرئيسيات غير فارغ", () => {
-    for (const id of ALL_CATEGORIES.flatMap((c) => [c.id, ...(c.children ?? []).map((x) => x.id)])) {
+    for (const id of ALL_CATEGORIES.flatMap((c) => [
+      c.id,
+      ...(c.children ?? []).map((x) => x.id),
+    ])) {
       expect(categoryLabel(id), id).toBeTruthy();
       expect(categoryEmoji(id), id).toBeTruthy();
     }

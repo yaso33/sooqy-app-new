@@ -6,10 +6,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { fetchMyStore, merchantUpdateStore, uploadImageToBucket } from "@/lib/sooqy";
 import { childrenOf } from "@/lib/taxonomy";
-import {
-  MainCategoryPicker,
-  SubcategoryMultiSelect,
-} from "@/components/sooqy/category-tiles";
+import { MainCategoryPicker, SubcategoryMultiSelect } from "@/components/sooqy/category-tiles";
 import { geoErrorMessage, useGeo } from "@/lib/geo";
 import { WilayaSelect } from "@/components/sooqy/WilayaSelect";
 import { PageHeader } from "@/components/sooqy/page-header";
@@ -182,11 +179,7 @@ function StoreSettingsPage() {
 
   return (
     <div className="mx-auto max-w-xl space-y-5 px-4 pb-24 pt-6">
-      <PageHeader
-        title="تخصيص المتجر"
-        subtitle="هوية متجرك تظهر للعملاء في صفحته"
-        back="/studio"
-      />
+      <PageHeader title="تخصيص المتجر" subtitle="هوية متجرك تظهر للعملاء في صفحته" back="/studio" />
 
       {/* بطاقة الهوية: الغلاف + الشعار + الاسم */}
       <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-soft">

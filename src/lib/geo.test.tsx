@@ -4,10 +4,7 @@ import { geoErrorMessage, useGeo } from "./geo";
 
 type Pos = { coords: { latitude: number; longitude: number } };
 type Geolike = {
-  getCurrentPosition: (
-    ok: (p: Pos) => void,
-    err?: (e: unknown) => void,
-  ) => void;
+  getCurrentPosition: (ok: (p: Pos) => void, err?: (e: unknown) => void) => void;
 };
 
 const ALGIERS_POS: Pos = { coords: { latitude: 36.7538, longitude: 3.0588 } };

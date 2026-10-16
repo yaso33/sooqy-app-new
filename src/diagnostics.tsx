@@ -92,7 +92,9 @@ function DiagnosticsPage() {
       }
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {}
+    } catch {
+      // تجاهل إذا فشل نسخ النص إلى الحافظة
+    }
   };
 
   return (
@@ -123,8 +125,7 @@ function DiagnosticsPage() {
 
         {hbAgeSec > 5 && (
           <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
-            ⚠️ النبضة توقفت قبل {hbAgeSec} ثانية — خيط JavaScript كان
-            مشغولًا/متجمدًا في تلك اللحظة.
+            ⚠️ النبضة توقفت قبل {hbAgeSec} ثانية — خيط JavaScript كان مشغولًا/متجمدًا في تلك اللحظة.
           </div>
         )}
 

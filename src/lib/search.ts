@@ -9,21 +9,23 @@ const MAX_RECENT = 8;
  *  الهمزات والألف المقصورة والتاء المربوطة والأرقام العربية-الهندية،
  *  لأن المستخدم يكتب بالعربية بينما البيانات مخزّنة بالفرنسية أحيانًا. */
 export function normalizeText(input: string): string {
-  return input
-    .normalize("NFKD")
-    // NFKD يفكّ الهمزة إلى علامة مركّبة (U+0654)، فنحذف كل علامات
-    // التشكيل المركّبة عمومًا لا النطاق المحدود فقط.
-    .replace(/\p{M}/gu, "")
-    .replace(/[أإآٱ]/g, "ا")
-    .replace(/ى/g, "ي")
-    .replace(/ؤ/g, "و")
-    .replace(/ئ/g, "ي")
-    .replace(/ة/g, "ه")
-    .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660))
-    .replace(/[^\p{L}\p{N}]+/gu, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toLowerCase();
+  return (
+    input
+      .normalize("NFKD")
+      // NFKD يفكّ الهمزة إلى علامة مركّبة (U+0654)، فنحذف كل علامات
+      // التشكيل المركّبة عمومًا لا النطاق المحدود فقط.
+      .replace(/\p{M}/gu, "")
+      .replace(/[أإآٱ]/g, "ا")
+      .replace(/ى/g, "ي")
+      .replace(/ؤ/g, "و")
+      .replace(/ئ/g, "ي")
+      .replace(/ة/g, "ه")
+      .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660))
+      .replace(/[^\p{L}\p{N}]+/gu, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase()
+  );
 }
 
 /** مسافة ليفنشتاين — لتصحيح الأخطاء الإملائية البسيطة (حرف واحد أو حرفين). */

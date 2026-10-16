@@ -86,7 +86,11 @@ export function clearNetLog(): void {
   }
 }
 
-export type FriendlyError = { title: string; hint: string; kind: "offline" | "empty" | "server" | "unknown" };
+export type FriendlyError = {
+  title: string;
+  hint: string;
+  kind: "offline" | "empty" | "server" | "unknown";
+};
 
 /**
  * ترجمة الخطأ إلى رسالة عربية مفهومة + تصنيفه، للتمييز بين
@@ -127,7 +131,12 @@ export function friendlyError(err: unknown): FriendlyError {
   }
 
   // أخطاء المصادقة/الصلاحيات
-  if (code === "42501" || text.includes("jwt") || text.includes("token") || text.includes("permission denied")) {
+  if (
+    code === "42501" ||
+    text.includes("jwt") ||
+    text.includes("token") ||
+    text.includes("permission denied")
+  ) {
     return {
       title: "انتهت الجلسة أو الصلاحية",
       hint: "سجّل الدخول من جديد ثم أعد المحاولة.",
@@ -136,7 +145,11 @@ export function friendlyError(err: unknown): FriendlyError {
   }
 
   // أخطاء الخادم العامة (5xx)
-  if (/error 5\d\d/.test(text) || text.includes("internal server") || text.includes("bad gateway")) {
+  if (
+    /error 5\d\d/.test(text) ||
+    text.includes("internal server") ||
+    text.includes("bad gateway")
+  ) {
     return {
       title: "خطأ في الخادم",
       hint: "الخادم يمر بمشكلة مؤقتة. أعد المحاولة بعد لحظات.",

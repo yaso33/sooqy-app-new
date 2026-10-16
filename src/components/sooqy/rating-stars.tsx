@@ -21,12 +21,16 @@ export function RatingStars({
             key={i}
             className={cn(
               size,
-              i <= Math.round(value) ? "fill-warning text-warning" : "fill-neutral-200 text-neutral-200",
+              i <= Math.round(value)
+                ? "fill-warning text-warning"
+                : "fill-neutral-200 text-neutral-200",
             )}
           />
         ))}
       </span>
-      {showValue && <span className="text-xs font-semibold text-foreground">{value.toFixed(1)}</span>}
+      {showValue && (
+        <span className="text-xs font-semibold text-foreground">{value.toFixed(1)}</span>
+      )}
     </span>
   );
 }

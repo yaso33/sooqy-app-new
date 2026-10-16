@@ -69,12 +69,14 @@ export type Database = {
           commission_amount: number;
           commune: string;
           created_at: string;
+          delivery_method: string | null;
           delivery_type: string;
           full_name: string;
           id: string;
           payment_method: string;
           phone: string;
           receipt_url: string | null;
+          shipment_id: string | null;
           shipping_fee: number;
           status: string;
           subtotal: number;
@@ -87,12 +89,14 @@ export type Database = {
           commission_amount?: number;
           commune: string;
           created_at?: string;
+          delivery_method?: string;
           delivery_type: string;
           full_name: string;
           id?: string;
           payment_method: string;
           phone: string;
           receipt_url?: string | null;
+          shipment_id?: string;
           shipping_fee: number;
           status?: string;
           subtotal: number;
@@ -105,12 +109,14 @@ export type Database = {
           commission_amount?: number;
           commune?: string;
           created_at?: string;
+          delivery_method?: string;
           delivery_type?: string;
           full_name?: string;
           id?: string;
           payment_method?: string;
           phone?: string;
           receipt_url?: string | null;
+          shipment_id?: string;
           shipping_fee?: number;
           status?: string;
           subtotal?: number;
@@ -422,7 +428,7 @@ export type Database = {
           },
         ];
       };
-stores: {
+      stores: {
         Row: {
           address_line: string | null;
           category: string | null;
@@ -559,6 +565,266 @@ stores: {
         };
         Relationships: [];
       };
+      delivery_companies: {
+        Row: {
+          id: string;
+          user_id: string;
+          company_name: string;
+          contact_name: string | null;
+          contact_phone: string;
+          email: string | null;
+          license_number: string | null;
+          is_approved: boolean;
+          commission_rate: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          company_name: string;
+          contact_name?: string;
+          contact_phone: string;
+          email?: string;
+          license_number?: string;
+          is_approved?: boolean;
+          commission_rate?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          company_name?: string;
+          contact_name?: string;
+          contact_phone?: string;
+          email?: string;
+          license_number?: string;
+          is_approved?: boolean;
+          commission_rate?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "delivery_companies_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      delivery_coverage_areas: {
+        Row: {
+          id: string;
+          company_id: string;
+          wilaya_id: number;
+          communes: string[];
+          base_fee: number;
+          fee_per_km: number | null;
+          is_active: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          wilaya_id: number;
+          communes?: string[];
+          base_fee?: number;
+          fee_per_km?: number;
+          is_active?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          wilaya_id?: number;
+          communes?: string[];
+          base_fee?: number;
+          fee_per_km?: number;
+          is_active?: boolean;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "delivery_coverage_areas_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "delivery_companies";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "delivery_coverage_areas_wilaya_id_fkey";
+            columns: ["wilaya_id"];
+            isOneToOne: false;
+            referencedRelation: "wilayas";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      delivery_services: {
+        Row: {
+          id: string;
+          company_id: string;
+          service_name: string;
+          estimated_hours: number | null;
+          base_price: number;
+          is_active: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          service_name: string;
+          estimated_hours?: number;
+          base_price?: number;
+          is_active?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          service_name?: string;
+          estimated_hours?: number;
+          base_price?: number;
+          is_active?: boolean;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "delivery_services_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "delivery_companies";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      shipments: {
+        Row: {
+          id: string;
+          order_id: string;
+          company_id: string | null;
+          status: string;
+          pickup_address: string | null;
+          delivery_address: string | null;
+          recipient_name: string | null;
+          recipient_phone: string | null;
+          fee: number | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          order_id: string;
+          company_id?: string;
+          status?: string;
+          pickup_address?: string;
+          delivery_address?: string;
+          recipient_name?: string;
+          recipient_phone?: string;
+          fee?: number;
+          notes?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          order_id?: string;
+          company_id?: string;
+          status?: string;
+          pickup_address?: string;
+          delivery_address?: string;
+          recipient_name?: string;
+          recipient_phone?: string;
+          fee?: number;
+          notes?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "shipments_order_id_fkey";
+            columns: ["order_id"];
+            isOneToOne: false;
+            referencedRelation: "orders";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "shipments_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "delivery_companies";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      shipment_status_logs: {
+        Row: {
+          id: string;
+          shipment_id: string;
+          status: string;
+          note: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          shipment_id: string;
+          status: string;
+          note?: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          shipment_id?: string;
+          status?: string;
+          note?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "shipment_status_logs_shipment_id_fkey";
+            columns: ["shipment_id"];
+            isOneToOne: false;
+            referencedRelation: "shipments";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      shipment_tracking: {
+        Row: {
+          id: string;
+          shipment_id: string;
+          lat: number | null;
+          lng: number | null;
+          recorded_at: string;
+        };
+        Insert: {
+          id?: string;
+          shipment_id: string;
+          lat?: number;
+          lng?: number;
+          recorded_at?: string;
+        };
+        Update: {
+          id?: string;
+          shipment_id?: string;
+          lat?: number;
+          lng?: number;
+          recorded_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "shipment_tracking_shipment_id_fkey";
+            columns: ["shipment_id"];
+            isOneToOne: false;
+            referencedRelation: "shipments";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -671,7 +937,7 @@ stores: {
       };
     };
     Enums: {
-      app_role: "customer" | "merchant" | "admin";
+      app_role: "customer" | "merchant" | "admin" | "delivery_company";
     };
     CompositeTypes: {
       [_ in never]: never;

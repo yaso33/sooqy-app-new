@@ -18,8 +18,20 @@ describe("stockLevel", () => {
 
 describe("primaryImage", () => {
   const images: ProductImage[] = [
-    { id: "1", offer_id: "o", image_url: "a.jpg", is_primary: false, created_at: "2026-01-01T00:00:00Z" },
-    { id: "2", offer_id: "o", image_url: "b.jpg", is_primary: true, created_at: "2026-01-01T00:00:00Z" },
+    {
+      id: "1",
+      offer_id: "o",
+      image_url: "a.jpg",
+      is_primary: false,
+      created_at: "2026-01-01T00:00:00Z",
+    },
+    {
+      id: "2",
+      offer_id: "o",
+      image_url: "b.jpg",
+      is_primary: true,
+      created_at: "2026-01-01T00:00:00Z",
+    },
   ];
 
   it("يفضّل الصورة الأساسية", () => {

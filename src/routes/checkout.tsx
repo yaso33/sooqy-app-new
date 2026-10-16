@@ -24,6 +24,7 @@ import {
   primaryImage,
 } from "@/lib/sooqy";
 import { getShippingFee, type DeliveryType } from "@/lib/shipping";
+import { fetchApprovedDeliveryCompanies } from "@/lib/delivery";
 import { WilayaSelect } from "@/components/sooqy/WilayaSelect";
 import { PageHeader } from "@/components/sooqy/page-header";
 import { cn } from "@/lib/utils";
@@ -51,6 +52,12 @@ function CheckoutPage() {
   const [wilayaId, setWilayaId] = useState<number | null>(null);
   const [commune, setCommune] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cod");
+  const [deliveryCompanyId, setDeliveryCompanyId] = useState<string | null>(null);
+  const deliveryCompanies = useQuery({
+    queryKey: ["delivery-companies"],
+    queryFn: fetchApprovedDeliveryCompanies,
+    enabled: deliveryType === "home",
+  });
   const [fullName, setFullName] = useState(user?.user_metadata?.["full_name"] ?? "");
   const [phone, setPhone] = useState(user?.phone ?? "");
   const [address, setAddress] = useState("");
@@ -132,6 +139,7 @@ function CheckoutPage() {
         paymentMethod,
         null, // لا وصل دفع — الدفع عند الاستلام فقط حاليًا
         { fullName: fullName.trim(), phone: normalizePhone(phone.trim()), address: address.trim() },
+        deliveryCompanyId,
       );
       setOrderId(id);
       bag.clear();
@@ -353,13 +361,40 @@ function CheckoutPage() {
             ))}
           </div>
           {deliveryType === "home" && (
-            <textarea
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder="عنوان التوصيل التفصيلي (مطلوب للتوصيل للمنزل)"
-              rows={3}
-              className="w-full rounded-xl border bg-background px-3 py-2 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
-            />
+            <>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                  شركة التوصيل (اختياري)
+                </label>
+                <select
+                  value={deliveryCompanyId ?? ""}
+                  onChange={(e) => setDeliveryCompanyId(e.target.value || null)}
+                  className="h-12 w-full rounded-xl border border-input bg-background px-3 outline-none transition focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="">— اختر شركة توصيل —</option>
+                  {deliveryCompanies.data?.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.company_name}
+                    </option>
+                  ))}
+                </select>
+                {deliveryCompanies.isLoading && (
+                  <p className="text-xs text-muted-foreground">جارٍ تحميل الشركات...</p>
+                )}
+                {deliveryCompanies.data?.length === 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    لا توجد شركات توصيل معتمدة حالياً.
+                  </p>
+                )}
+              </div>
+              <textarea
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="عنوان التوصيل التفصيلي (مطلوب للتوصيل للمنزل)"
+                rows={3}
+                className="w-full rounded-xl border bg-background px-3 py-2 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
+              />
+            </>
           )}
           <p className="flex items-start gap-2 rounded-2xl bg-primary-soft/70 p-3 text-xs leading-relaxed text-muted-foreground">
             <Truck className="mt-0.5 size-4 shrink-0 text-primary" />

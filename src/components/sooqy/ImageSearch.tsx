@@ -58,7 +58,11 @@ export function ImageSearchButton({ onSearch, className, label = "ابحث بص�
           className,
         )}
       >
-        {busy ? <Loader2 className="size-4 animate-spin" /> : <Camera className="size-4 text-primary" />}
+        {busy ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : (
+          <Camera className="size-4 text-primary" />
+        )}
         <span>{busy ? "جارٍ التحليل…" : label}</span>
       </button>
 

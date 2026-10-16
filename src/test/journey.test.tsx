@@ -248,18 +248,19 @@ describe("جولة المستخدم — تدفقات حقيقية", () => {
     const router = renderApp();
     await go(router, "/profile");
 
+    // روابط الصفحة الداخلية حقيقية (لا href فارغ)
+    const inner = Array.from(document.querySelectorAll(".max-w-xl a")).filter(
+      (a) => !a.closest("nav"),
+    );
+    expect(inner.length).toBeGreaterThan(3);
+    for (const a of inner) expect(a.getAttribute("href")).toBeTruthy();
+
+    // فتح نموذج التعديل، ثم التحقق من حقوله وأزراره
+    fireEvent.click(screen.getByRole("button", { name: /تعديل/ }));
     await expectText("تعديل الملف الشخصي");
     expect(screen.getByPlaceholderText("مثال: أحمد بن يوسف")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("05XX XX XX XX")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "حفظ التغييرات" })).toBeInTheDocument();
-
-    // روابط الصفحة الداخلية حقيقية (لا href فارغ)
-    const inner = Array.from(document.querySelectorAll(".max-w-xl a")).filter((a) => !a.closest("nav"));
-    expect(inner.length).toBeGreaterThan(3);
-    for (const a of inner) expect(a.getAttribute("href")).toBeTruthy();
-
-    // زر «تعديل» ينقل التركيز إلى النموذج (scrollIntoView قد لا يكون مدعومًا)
-    fireEvent.click(screen.getByRole("button", { name: /تعديل/ }));
   });
 
   it("إرسال تقييم لمنتج يظهر تأكيد «قمت بتقييم هذا العنصر»", async () => {

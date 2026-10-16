@@ -19,7 +19,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       router.invalidate();
       if (event !== "SIGNED_OUT") qc.invalidateQueries();
     });
-    supabase.auth.getSession().then(({ data: d }) => setState({ user: d.session?.user ?? null, ready: true }));
+    supabase.auth
+      .getSession()
+      .then(({ data: d }) => setState({ user: d.session?.user ?? null, ready: true }));
     return () => data.subscription.unsubscribe();
   }, [router, qc]);
 

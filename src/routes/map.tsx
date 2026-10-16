@@ -73,7 +73,11 @@ function MapPage() {
             className="h-12 flex-1 bg-transparent text-body outline-none placeholder:text-muted"
           />
           {q && (
-            <button onClick={() => setQ("")} aria-label="مسح البحث" className="text-muted-foreground">
+            <button
+              onClick={() => setQ("")}
+              aria-label="مسح البحث"
+              className="text-muted-foreground"
+            >
               <X className="size-4" />
             </button>
           )}
@@ -94,7 +98,10 @@ function MapPage() {
         <button
           aria-label="الفلاتر"
           onClick={() => setShowFilters(true)}
-          className={cn("icon-btn shadow-soft", (onlyOpen || sort !== "near") && "bg-primary text-primary-foreground border-primary")}
+          className={cn(
+            "icon-btn shadow-soft",
+            (onlyOpen || sort !== "near") && "bg-primary text-primary-foreground border-primary",
+          )}
         >
           <Filter className="size-5" />
         </button>
@@ -129,7 +136,9 @@ function MapPage() {
           </button>
           <div className="flex gap-3">
             <div className="size-16 shrink-0 overflow-hidden rounded-xl bg-neutral-100">
-              {sel.cover_url && <img src={sel.cover_url} alt="" className="size-full object-cover" />}
+              {sel.cover_url && (
+                <img src={sel.cover_url} alt="" className="size-full object-cover" />
+              )}
             </div>
             <div className="min-w-0 space-y-1">
               <p className="line-clamp-1 font-bold">{sel.name}</p>
@@ -140,7 +149,9 @@ function MapPage() {
               <p className="flex items-center gap-2 text-xs text-muted-foreground">
                 <RatingStars rating={Number(sel.rating)} size="size-3" showValue />
                 {sel.commune}
-                {sel.distance != null && <span className="font-bold text-ink">{formatKm(sel.distance)}</span>}
+                {sel.distance != null && (
+                  <span className="font-bold text-ink">{formatKm(sel.distance)}</span>
+                )}
               </p>
             </div>
           </div>
@@ -167,7 +178,10 @@ function MapPage() {
 
       {/* لوحة الفلاتر */}
       {showFilters && (
-        <div className="absolute inset-0 z-[1100] flex items-end bg-black/30" onClick={() => setShowFilters(false)}>
+        <div
+          className="absolute inset-0 z-[1100] flex items-end bg-black/30"
+          onClick={() => setShowFilters(false)}
+        >
           <div
             className="w-full animate-fade-up rounded-t-3xl border-t border-border bg-card p-5 pb-8"
             onClick={(e) => e.stopPropagation()}

@@ -16,45 +16,29 @@ const MAX_ENTRIES = 200;
 
 function readLogs(): LogEntry[] {
   try {
-    return JSON.parse(
-      localStorage.getItem(STORAGE_KEY) || "[]",
-    );
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
   } catch {
     return [];
   }
 }
 
-function safeDetails(
-  details?: Record<string, unknown>,
-) {
+function safeDetails(details?: Record<string, unknown>) {
   if (!details) return undefined;
 
   const safe: Record<string, unknown> = {};
 
   for (const [key, value] of Object.entries(details)) {
-    if (
-      /password|token|authorization|cookie|email|phone|message|text|value/i.test(key)
-    ) continue;
+    if (/password|token|authorization|cookie|email|phone|message|text|value/i.test(key)) continue;
 
-    if (
-      value === null ||
-      ["string", "number", "boolean"].includes(typeof value)
-    ) {
-      safe[key] =
-        typeof value === "string"
-          ? value.slice(0, 120)
-          : value;
+    if (value === null || ["string", "number", "boolean"].includes(typeof value)) {
+      safe[key] = typeof value === "string" ? value.slice(0, 120) : value;
     }
   }
 
   return safe;
 }
 
-export function logEvent(
-  level: LogLevel,
-  event: string,
-  details?: Record<string, unknown>,
-) {
+export function logEvent(level: LogLevel, event: string, details?: Record<string, unknown>) {
   const entry: LogEntry = {
     time: new Date().toISOString(),
     level,
@@ -65,11 +49,10 @@ export function logEvent(
   const logs = [...readLogs(), entry].slice(-MAX_ENTRIES);
 
   try {
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify(logs),
-    );
-  } catch {}
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(logs));
+  } catch {
+    // تجاهل خطأ التخزين المحلي (مثل وضع التصفح المتخفي)
+  }
 
   const prefix = `[SooQy][${level}] ${event}`;
 
@@ -85,7 +68,9 @@ export function getDiagnosticLogs() {
 export function clearDiagnosticLogs() {
   try {
     localStorage.removeItem(STORAGE_KEY);
-  } catch {}
+  } catch {
+    // تجاهل خطأ التخزين المحلي (مثل وضع التصفح المتخفي)
+  }
 }
 
 // أدوات تصحيح من console في WebView (عبر adb / remote debugging):
@@ -124,7 +109,9 @@ function startHeartbeat() {
       const arr: number[] = JSON.parse(localStorage.getItem(HB_KEY) || "[]");
       arr.push(now);
       localStorage.setItem(HB_KEY, JSON.stringify(arr.slice(-60)));
-    } catch {}
+    } catch {
+      // تجاهل خطأ التخزين المحلي (مثل وضع التصفح المتخفي)
+    }
   };
   tick();
   heartbeatTimer = setInterval(tick, 1000);
@@ -143,7 +130,9 @@ function startLongTaskObserver() {
       }
     });
     po.observe({ entryTypes: ["longtask"] });
-  } catch {}
+  } catch {
+    // تجاهل إذا كان PerformanceObserver غير مدعوم
+  }
 }
 
 export function getDeviceInfo() {
@@ -195,10 +184,7 @@ export function initDiagnostics() {
     (event) => {
       const target = event.target as HTMLElement | null;
 
-      if (
-        target?.tagName === "SCRIPT" ||
-        target?.tagName === "LINK"
-      ) {
+      if (target?.tagName === "SCRIPT" || target?.tagName === "LINK") {
         logEvent("error", "resource.load.error", {
           tag: target.tagName,
         });
@@ -207,26 +193,17 @@ export function initDiagnostics() {
     true,
   );
 
-  window.addEventListener(
-    "unhandledrejection",
-    (event) => {
-      logEvent("error", "javascript.unhandledrejection", {
-        reason:
-          event.reason instanceof Error
-            ? event.reason.message
-            : String(event.reason),
-      });
+  window.addEventListener("unhandledrejection", (event) => {
+    logEvent("error", "javascript.unhandledrejection", {
+      reason: event.reason instanceof Error ? event.reason.message : String(event.reason),
+    });
 
-      if (event.reason instanceof Error) {
-        Sentry.captureException(event.reason);
-      } else {
-        Sentry.captureMessage(
-          "Unhandled Promise rejection",
-          "error",
-        );
-      }
-    },
-  );
+    if (event.reason instanceof Error) {
+      Sentry.captureException(event.reason);
+    } else {
+      Sentry.captureMessage("Unhandled Promise rejection", "error");
+    }
+  });
 
   window.addEventListener("offline", () => {
     logEvent("warn", "network.offline");
@@ -239,10 +216,7 @@ export function initDiagnostics() {
   document.addEventListener("focusin", (event) => {
     const target = event.target as HTMLElement | null;
 
-    if (
-      target &&
-      ["INPUT", "TEXTAREA"].includes(target.tagName)
-    ) {
+    if (target && ["INPUT", "TEXTAREA"].includes(target.tagName)) {
       logEvent("info", "input.focus", {
         tag: target.tagName,
         type: target.getAttribute("type") || "text",

@@ -80,7 +80,11 @@ function CategoryPage() {
   return (
     <div className="space-y-4 px-4 pt-4">
       <header className="flex items-start gap-3 py-1">
-        <button onClick={() => window.history.back()} aria-label="رجوع" className="icon-btn shrink-0">
+        <button
+          onClick={() => window.history.back()}
+          aria-label="رجوع"
+          className="icon-btn shrink-0"
+        >
           <ArrowRight className="size-5" />
         </button>
         <div className="flex min-w-0 items-center gap-2">
@@ -173,7 +177,10 @@ function CategoryPage() {
 
       {/* لوحة الفلاتر */}
       {showFilters && (
-        <div className="fixed inset-0 z-[90] flex items-end bg-black/30" onClick={() => setShowFilters(false)}>
+        <div
+          className="fixed inset-0 z-[90] flex items-end bg-black/30"
+          onClick={() => setShowFilters(false)}
+        >
           <div
             className="w-full animate-fade-up rounded-t-3xl border-t border-border bg-card p-5 pb-8"
             onClick={(e) => e.stopPropagation()}

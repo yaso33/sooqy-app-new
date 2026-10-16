@@ -42,7 +42,9 @@ describe("db-sync sanity", () => {
   });
   it("getStore/getProductComparisonOffers tolerate bad id", async () => {
     await expect(getStore("00000000-0000-0000-0000-000000000000")).resolves.toBeNull();
-    await expect(getProductComparisonOffers("00000000-0000-0000-0000-000000000000")).resolves.toEqual([]);
+    await expect(
+      getProductComparisonOffers("00000000-0000-0000-0000-000000000000"),
+    ).resolves.toEqual([]);
   });
   it("fetchMyOrders/fetchMyReservations do not throw without auth", async () => {
     await expect(fetchMyOrders()).resolves.toBeDefined();
