@@ -139,15 +139,12 @@ function AdminDeliveryCompaniesPage() {
                   <BadgeStatus isApproved={company.is_approved} />
                   <button
                     onClick={() => handleToggleApproval(company.id, company.is_approved)}
-                    className="rounded-xl px-3 py-1.5 text-xs font-bold transition shadow-soft"
-                    {...{
-                      className: cn(
-                        "rounded-xl px-3 py-1.5 text-xs font-bold transition shadow-soft",
-                        company.is_approved
-                          ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                          : "bg-primary/10 text-primary hover:bg-primary",
-                      ),
-                    }}
+                    className={cn(
+                      "rounded-xl px-3 py-1.5 text-xs font-bold transition shadow-soft",
+                      company.is_approved
+                        ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                        : "bg-primary/10 text-primary hover:bg-primary",
+                    )}
                   >
                     {company.is_approved ? "إلغاء الاعتماد" : "اعتماد"}
                   </button>

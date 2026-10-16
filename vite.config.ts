@@ -1,6 +1,5 @@
 import { defineConfig } from "vite";
 import tailwindcss from "@tailwindcss/vite";
-import tsConfigPaths from "vite-tsconfig-paths";
 import react from "@vitejs/plugin-react";
 import { fileURLToPath } from "node:url";
 
@@ -28,12 +27,15 @@ export default defineConfig(async () => {
       tanstackStart({ server: { entry: "server" } }),
       react(),
       tailwindcss(),
-      tsConfigPaths({ projects: ["./tsconfig.json"] }),
     ],
     resolve: {
+      // دعم مسارات tsconfig أصليًا في Vite 8 (بديل إضافة vite-tsconfig-paths)
+      tsconfigPaths: true,
       alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
     },
     build: {
+      // maplibre-gl وحدها ~1MB وتُحمَّل عند فتح الخريطة فقط، فلا داعي لتحذير الحجم
+      chunkSizeWarningLimit: 1200,
       minify: "terser",
       terserOptions: {
         compress: {
