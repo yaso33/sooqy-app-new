@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useRef, useState } from "react";
 import { Plus, Trash2, Pin, Image as ImageIcon, ImageOff } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 const MAX_FILES = 10;
@@ -9,6 +10,8 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ACCEPTED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 
 export interface ImageUploaderItem {
+  /** معرف الصورة في قاعدة البيانات (للصور الموجودة من الخادم) */
+  id?: string;
   file: File;
   preview: string;
   isPrimary: boolean;
@@ -25,8 +28,12 @@ export interface ImageUploaderProps {
   label?: string;
   /** هل الصور مطلوبة */
   required?: boolean;
-  /** 클래с CSS للحاوية */
+  /** clase CSS للحاوية */
   className?: string;
+  /** عند حذف صورة موجودة من الخادم (تُستدعى قبل الإزالة من الواجهة) */
+  onRemove?: (item: ImageUploaderItem) => Promise<void>;
+  /** عند تحديد صورة موجودة كأساسية في الخادم (تُستدعى قبل التحديث في الواجهة) */
+  onSetPrimary?: (item: ImageUploaderItem) => Promise<void>;
 }
 
 export function ImageUploader({
@@ -73,7 +80,18 @@ export function ImageUploader({
   );
 
   const removeItem = useCallback(
-    (index: number) => {
+    async (index: number) => {
+      const removed = items[index];
+      // إذا كانت صورة موجودة من الخادم، احذفها من الخادم أولاً
+      if (removed && !removed.file && onRemove) {
+        try {
+          await onRemove(removed);
+        } catch {
+          toast.error("تعذر حذف الصورة من الخادم.");
+          return;
+        }
+      }
+
       setItems((prev) => {
         const next = prev.filter((_, i) => i !== index);
         // إذا حُذفت الصورة الأساسية، اجعل أول صورة متبقية أساسية
@@ -81,21 +99,30 @@ export function ImageUploader({
           next[0].isPrimary = true;
         }
         // إلغاء كائنات URL المحذوفة لتحرير الذاكرة
-        const removed = prev[index];
-        if (removed && !removed.file) {
-          // صورة موجودة من قبل — لا يوجد File object لإلغاء
-        } else if (removed) {
-          URL.revokeObjectURL(removed.preview);
+        const removedItem = prev[index];
+        if (removedItem && removedItem.file) {
+          URL.revokeObjectURL(removedItem.preview);
         }
         onChange(next);
         return next;
       });
     },
-    [onChange],
+    [items, onRemove, onChange],
   );
 
   const setPrimary = useCallback(
-    (index: number) => {
+    async (index: number) => {
+      const item = items[index];
+      // إذا كانت صورة موجودة من الخادم، حددها أساسية في الخادم أولاً
+      if (item && !item.file && onSetPrimary) {
+        try {
+          await onSetPrimary(item);
+        } catch {
+          toast.error("تعذر تحديد الصورة الأساسية في الخادم.");
+          return;
+        }
+      }
+
       setItems((prev) => {
         const next = [...prev];
         next.forEach((i) => (i.isPrimary = false));
@@ -104,7 +131,7 @@ export function ImageUploader({
         return next;
       });
     },
-    [onChange],
+    [items, onSetPrimary, onChange],
   );
 
   const triggerFileInput = () => {

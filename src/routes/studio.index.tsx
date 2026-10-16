@@ -6,6 +6,7 @@ import {
   ChevronLeft,
   Clock,
   Eye,
+  Image,
   MapPin,
   Package,
   PackagePlus,
@@ -115,6 +116,8 @@ function StudioPage() {
   });
   const [editImages, setEditImages] = useState<File[]>([]);
   const [editExistingImages, setEditExistingImages] = useState<ImageUploaderItem[]>([]);
+  const [managingImageOfferId, setManagingImageOfferId] = useState<string | null>(null);
+  const [managingImages, setManagingImages] = useState<ImageUploaderItem[]>([]);
 
   const roles = useQuery({ queryKey: ["my-roles"], queryFn: fetchMyRoles, enabled: !!user });
   const store = useQuery({ queryKey: ["my-store"], queryFn: fetchMyStore, enabled: !!user });
@@ -311,6 +314,48 @@ function StudioPage() {
       toast.error(error instanceof Error ? error.message : "تعذر تحديث المنتج.");
     } finally {
       setBusy(false);
+    }
+  };
+
+  const openImageManagement = (offer: OfferFull) => {
+    setManagingImageOfferId(offer.id);
+    setManagingImages(
+      (offer.images ?? []).map((img) => ({
+        id: img.id,
+        file: null as unknown as File,
+        preview: img.image_url,
+        isPrimary: img.is_primary,
+      })),
+    );
+  };
+
+  const closeImageManagement = () => {
+    setManagingImageOfferId(null);
+    setManagingImages([]);
+  };
+
+  const removeManagingImage = async (item: ImageUploaderItem) => {
+    if (!managingImageOfferId || !item.id) return;
+    try {
+      await merchantRemoveOfferImage(item.id);
+      setManagingImages((prev) => prev.filter((i) => i.id !== item.id));
+      await qc.invalidateQueries({ queryKey: ["my-store-offers", store.data?.id] });
+      toast.success("تم حذف الصورة ✅");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "تعذر حذف الصورة.");
+    }
+  };
+
+  const setManagingPrimaryImage = async (item: ImageUploaderItem) => {
+    if (!managingImageOfferId || !item.id) return;
+    try {
+      await merchantSetPrimaryImage(item.id);
+      setManagingImages((prev) =>
+        prev.map((i) => ({ ...i, isPrimary: i.id === item.id })),
+      );
+      await qc.invalidateQueries({ queryKey: ["my-store-offers", store.data?.id] });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "تعذر تحديد الصورة الأساسية.");
     }
   };
 
@@ -772,6 +817,32 @@ function StudioPage() {
               </div>
             )}
 
+            {/* إدارة الصور لمنتج محدد */}
+            {managingImageOfferId && (
+              <div className="mb-4 rounded-2xl border border-primary/25 bg-primary-soft/40 p-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <h3 className="flex items-center gap-1.5 text-sm font-bold">
+                    <Image className="size-3.5 text-primary" /> إدارة صور المنتج
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={closeImageManagement}
+                    className="rounded-full bg-card p-1.5 text-muted-foreground transition hover:text-foreground"
+                    aria-label="إغلاق إدارة الصور"
+                  >
+                    <X className="size-4" />
+                  </button>
+                </div>
+                <ImageUploader
+                  initialItems={managingImages}
+                  onChange={setManagingImages}
+                  label="إدارة صور المنتج (حتى 10)"
+                  onRemove={removeManagingImage}
+                  onSetPrimary={setManagingPrimaryImage}
+                />
+              </div>
+            )}
+
             <div className="space-y-2">
               {offers.data?.map((offer) => (
                 <div key={offer.id} className="rounded-2xl bg-background p-3">
@@ -799,6 +870,15 @@ function StudioPage() {
                         aria-label="تعديل المنتج"
                       >
                         <Pencil className="size-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openImageManagement(offer)}
+                        className="rounded-full bg-primary-soft p-2 text-primary transition hover:bg-primary hover:text-primary-foreground"
+                        aria-label="إدارة صور المنتج"
+                        title="إدارة الصور"
+                      >
+                        <Image className="size-4" />
                       </button>
                       <button
                         type="button"
