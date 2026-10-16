@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Compass, Globe, Home, Map, ShoppingBag, User } from "lucide-react";
+import { Compass, Home, Map, ShoppingBag, User } from "lucide-react";
 import { useBag } from "@/lib/bag";
 import { useTranslation } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -58,24 +58,6 @@ export function BottomNav() {
             </Link>
           </li>
         ))}
-        <li>
-          <button
-            onClick={() => switchLang(lang === "ar" ? "en" : "ar")}
-            aria-label={isRTL ? "تغيير اللغة" : "Change language"}
-            className="relative flex h-16 flex-col items-center justify-center gap-1 text-[11px] font-semibold text-muted-foreground transition-colors"
-          >
-            <span
-              className={cn(
-                "absolute top-1.5 h-7 w-12 rounded-full transition-all duration-300 opacity-0 group-hover:opacity-60",
-              )}
-              aria-hidden="true"
-            />
-            <span className="relative">
-              <Globe className="size-[22px]" />
-            </span>
-            <span className="relative w-full truncate px-0.5 text-center">{t("language")}</span>
-          </button>
-        </li>
       </ul>
     </nav>
   );
