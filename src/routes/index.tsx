@@ -3,7 +3,7 @@ import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Bell, MapPin, Search } from "lucide-react";
 import { useGeo } from "@/lib/geo";
-import { fetchHomepageOffers, fetchMostViewedGroups, searchProducts } from "@/lib/sooqy";
+import { fetchHomepageOffers, searchProducts } from "@/lib/sooqy";
 import { OfferCard, ProductCard } from "@/components/sooqy/cards";
 import { WilayaButton } from "@/components/sooqy/WilayaSelect";
 import { ProductGridSkeleton } from "@/components/sooqy/skeleton";
@@ -67,17 +67,8 @@ function Home() {
     getNextPageParam: (lastPage, allPages) =>
       lastPage.length === 8 ? allPages.length * 8 : undefined,
   });
-  const mostViewed = useInfiniteQuery({
-    queryKey: ["most-viewed"],
-    queryFn: ({ pageParam = 0 }) => fetchMostViewedGroups({ limit: 10, offset: pageParam }),
-    initialPageParam: 0,
-    getNextPageParam: (lastPage, allPages) =>
-      lastPage.length === 10 ? allPages.length * 10 : undefined,
-  });
-
   const products = (trending.data?.pages ?? []).flat();
   const offerList = (offers.data?.pages ?? []).flat();
-  const mostViewedProducts = (mostViewed.data?.pages ?? []).flat();
   const nearby = nearbyProducts.data ?? [];
   const topRated = topRatedProducts.data ?? [];
 
@@ -181,49 +172,6 @@ function Home() {
               onClick={() => trending.fetchNextPage()}
               className="btn-secondary w-full py-2"
               disabled={trending.isFetchingNextPage}
-            >
-              تحميل المزيد
-            </button>
-          </div>
-        )}
-      </section>
-
-      {/* الأكثر مشاهدة */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-h3 text-foreground">الأكثر مشاهدة</h2>
-          <Link to="/explore" className="text-sm font-bold text-primary">
-            عرض الكل
-          </Link>
-        </div>
-        {mostViewed.isLoading && <ProductGridSkeleton count={4} />}
-        {mostViewed.isError && (
-          <ErrorState
-            scope="home:most-viewed"
-            error={mostViewed.error}
-            onRetry={() => mostViewed.refetch()}
-          />
-        )}
-        {!mostViewed.isLoading && mostViewedProducts.length === 0 && (
-          <EmptyState
-            icon="👁️"
-            title="لا توجد منتجات مشاهدة بعد"
-            hint="ستظهر المنتجات الأكثر مشاهدة هنا."
-          />
-        )}
-        <div className="grid grid-cols-2 gap-3">
-          {mostViewedProducts.slice(0, 8).map((g, i) => (
-            <Reveal key={g.product.id} index={i}>
-              <ProductCard g={g} />
-            </Reveal>
-          ))}
-        </div>
-        {mostViewed.hasNextPage && !mostViewed.isFetchingNextPage && (
-          <div className="mt-3 text-center">
-            <button
-              onClick={() => mostViewed.fetchNextPage()}
-              className="btn-secondary w-full py-2"
-              disabled={mostViewed.isFetchingNextPage}
             >
               تحميل المزيد
             </button>
