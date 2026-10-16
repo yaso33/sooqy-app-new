@@ -728,7 +728,7 @@ function StudioPage() {
               />
               <button
                 onClick={addProduct}
-                disabled={busy || images.length === 0}
+                disabled={busy}
                 className="rounded-2xl bg-ink py-3 font-bold text-ink-foreground disabled:opacity-50"
               >
                 {busy ? "جارٍ الحفظ..." : "حفظ المنتج"}
