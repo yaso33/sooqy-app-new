@@ -7,14 +7,10 @@ import { formatDA } from "@/lib/geo";
 import { fetchMyOrders } from "@/lib/sooqy";
 import { EmptyState } from "@/components/sooqy/empty-state";
 import { cn } from "@/lib/utils";
+import { SeoHead } from "@/components/seo/SeoHead";
 
 export const Route = createFileRoute("/orders/")({
-  head: () => ({
-    meta: [
-      { title: "طلباتي — SooQy" },
-      { name: "description", content: "تابع طلباتك وحالاتها من المتاجر الجزائرية." },
-    ],
-  }),
+  head: () => ({}),
   component: OrdersPage,
 });
 
@@ -77,7 +73,14 @@ function OrdersPage() {
           : list.filter((o) => o.status === "cancelled");
 
   return (
-    <div className="space-y-4 px-4 pt-5">
+    <>
+      <SeoHead
+        title="طلباتي"
+        description="Follow your orders and their status from Algerian stores."
+        keywords="طلباتي, تتبع الطلب, SOOQY"
+        ogType="website"
+      />
+      <div className="space-y-4 px-4 pt-5">
       <header className="flex items-center gap-2 py-1">
         <h1 className="text-h1 text-foreground">طلباتي</h1>
       </header>
@@ -187,6 +190,7 @@ function OrdersPage() {
           );
         })}
       </div>
-    </div>
+      </div>
+    </>
   );
 }

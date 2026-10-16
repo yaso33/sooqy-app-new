@@ -5,8 +5,10 @@ import { useAuth } from "@/lib/auth";
 import { fetchMyNotifications, markNotificationsRead } from "@/lib/sooqy";
 import { EmptyState } from "@/components/sooqy/empty-state";
 import { cn } from "@/lib/utils";
+import { SeoHead } from "@/components/seo/SeoHead";
 
 export const Route = createFileRoute("/notifications")({
+  head: () => ({}),
   component: NotificationsPage,
 });
 
@@ -33,7 +35,14 @@ function NotificationsPage() {
   };
 
   return (
-    <div className="px-4 pt-4">
+    <>
+      <SeoHead
+        title="الإشعارات"
+        description="Stay updated on your orders, reservations and store offers."
+        keywords="الإشعارات, SOOQY"
+        ogType="website"
+      />
+      <div className="px-4 pt-4">
       <header className="flex items-center justify-between py-1">
         <div className="flex items-center gap-2">
           <button onClick={() => window.history.back()} aria-label="رجوع" className="icon-btn">
@@ -112,6 +121,7 @@ function NotificationsPage() {
           })}
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }

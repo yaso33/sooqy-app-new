@@ -16,14 +16,10 @@ import { ProductCard, StoreCard } from "@/components/sooqy/cards";
 import { EmptyState } from "@/components/sooqy/empty-state";
 import { ProductGridSkeleton, ListSkeleton } from "@/components/sooqy/skeleton";
 import { cn } from "@/lib/utils";
+import { SeoHead } from "@/components/seo/SeoHead";
 
 export const Route = createFileRoute("/favorites")({
-  head: () => ({
-    meta: [
-      { title: "المفضلة — SooQy" },
-      { name: "description", content: "منتجاتك ومتاجرك المفضلة في مكان واحد." },
-    ],
-  }),
+  head: () => ({}),
   component: FavoritesPage,
 });
 
@@ -72,7 +68,14 @@ function FavoritesPage() {
   });
 
   return (
-    <div className="space-y-4 px-4 pt-4">
+    <>
+      <SeoHead
+        title="المفضلة"
+        description="ال products and stores المفضلة لـ SOOQY في مكان واحد."
+        keywords="المفضلة, منتجات مفضلة, متاجر مفضلة, SOOQY"
+        ogType="website"
+      />
+      <div className="space-y-4 px-4 pt-4">
       <header className="flex items-center gap-2 py-1">
         <button onClick={() => window.history.back()} aria-label="رجوع" className="icon-btn">
           <ArrowRight className="size-5" />
@@ -147,5 +150,6 @@ function FavoritesPage() {
           </>
         ))}
     </div>
+    </>
   );
 }

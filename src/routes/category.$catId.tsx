@@ -18,13 +18,12 @@ import { ProductGridSkeleton } from "@/components/sooqy/skeleton";
 import { EmptyState } from "@/components/sooqy/empty-state";
 import { Reveal } from "@/components/sooqy/reveal";
 import { cn } from "@/lib/utils";
+import { SeoHead } from "@/components/seo/SeoHead";
 
 const PAGE_SIZE = 24;
 
 export const Route = createFileRoute("/category/$catId")({
-  head: ({ params }) => ({
-    meta: [{ title: `${categoryLabel(params.catId)} — SooQy` }],
-  }),
+  head: ({ params }) => ({}),
   component: CategoryPage,
 });
 
@@ -77,8 +76,26 @@ function CategoryPage() {
   const current = parentOf(active);
   const otherMains = MAIN_CATEGORIES.filter((c) => c.id !== current?.id).slice(0, 6);
 
+  const catLabel = categoryLabel(catId);
+  const catHint = categoryHint(current?.id) || `تصنيف ${catLabel} في سوق الجزائر.`;
+
   return (
-    <div className="space-y-4 px-4 pt-4">
+    <>
+      <SeoHead
+        title={catLabel}
+        description={catHint}
+        keywords={`${catLabel}, منتجات الجزائر, شراء ${catLabel} في الجزائر, SOOQY`}
+        ogType="website"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "ItemList",
+          name: catLabel,
+          numberOfItems: list.length,
+          description: catHint,
+          inLanguage: "ar-DZ",
+        }}
+      />
+      <div className="space-y-4 px-4 pt-4">
       <header className="flex items-start gap-3 py-1">
         <button
           onClick={() => window.history.back()}
@@ -90,7 +107,7 @@ function CategoryPage() {
         <div className="flex min-w-0 items-center gap-2">
           <span className="text-2xl">{categoryEmoji(catId)}</span>
           <div className="min-w-0">
-            <h1 className="truncate text-h1 text-foreground">{categoryLabel(catId)}</h1>
+            <h1 className="truncate text-h1 text-foreground">{catLabel}</h1>
             {categoryHint(current?.id) && (
               <p className="truncate text-xs font-medium text-muted-foreground">
                 {categoryHint(current?.id)}
@@ -202,6 +219,7 @@ function CategoryPage() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }

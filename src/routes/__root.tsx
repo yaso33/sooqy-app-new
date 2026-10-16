@@ -81,23 +81,35 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  head: () => ({
+head: () => ({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { name: "theme-color", content: "#F8FAFC" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { title: "SOOQY — شاهد السلعة قبل الخروج" },
-      { name: "description", content: "قبل الخروج للبحث عن المنتج، شاهده في SOOQY 🇩🇿" },
+      { name: "description", content: "SOOQY سوق جزائري: شاهد السلعة قبل الخروج للبحث عنها. منتج، متجر،صناعة،طلب وتتبع." },
+      { name: "keywords", content: "سوق جزائري, منتجات الجزائر, متاجر الجزائر, توصيل الجزائر, SOOQY, شراء الجزائر" },
+      { name: "author", content: "SOOQY" },
       { property: "og:type", content: "website" },
+      { property: "og:site_name", content: "SOOQY" },
+      { property: "og:locale", content: "ar_DZ" },
+      { property: "og:image", content: "https://sooqy.app/seo/og.svg" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "SOOQY — شاهد السلعة قبل الخروج" },
+      { name: "twitter:description", content: "SOOQY سوق جزائري: شاهد السلعة قبل الخروج للبحث عنها." },
+      { name: "twitter:image", content: "https://sooqy.app/seo/og.svg" },
     ],
     links: [
-      // appCss يرجع "" في بيئة الاختبار فقط — تجاهله حتى لا يُرسم <link> بـhref فارغ
+      // appCss يreference "" في بيئة الاختبار فقط — تجاهله حتى لا يُرسم <link> بـhref فارغ
       ...(appCss ? [{ rel: "stylesheet", href: appCss }] : []),
       { rel: "icon", href: "/icon-192.png", type: "image/png" },
       { rel: "apple-touch-icon", href: "/icon-192.png" },
       { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "preconnect", href: "https://fonts.gstatic.com" },
+      { rel: "preconnect", href: "https://cdn.jsdelivr.net", crossOrigin: "anonymous" },
+      { rel: "preload", href: "/seo/og.svg", as: "image" },
+      { rel: "sitemap", href: "/sitemap.xml", type: "application/xml" },
     ],
   }),
   shellComponent: RootShell,

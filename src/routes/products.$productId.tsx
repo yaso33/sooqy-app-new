@@ -40,19 +40,10 @@ import { DirectionsButton } from "@/components/sooqy/DirectionsButton";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { ar } from "date-fns/locale";
+import { SeoHead } from "@/components/seo/SeoHead";
 
 export const Route = createFileRoute("/products/$productId")({
-  head: () => ({
-    meta: [
-      { title: "تفاصيل المنتج وأماكن توفره — SOOQY" },
-      {
-        name: "description",
-        content: "قارن أسعار هذا المنتج في المحلات القريبة واحجزه واستلمه من المحل.",
-      },
-      { property: "og:title", content: "شاهد أين تتوفر هذه السلعة — SOOQY" },
-      { property: "og:description", content: "مقارنة الأسعار والمخزون في المحلات الجزائرية." },
-    ],
-  }),
+  head: () => ({}),
   component: ProductPage,
 });
 
@@ -139,9 +130,31 @@ function ProductPage() {
   if (color) chosen["اللون"] = color;
   const level = selected ? stockLevel(selected) : "out";
 
+  const firstPrice = sorted[0]?.price ?? 0;
+  const lowPrice = sorted.length ? Math.min(...sorted.map((o) => o.price)) : 0;
+  const highPrice = sorted.length ? Math.max(...sorted.map((o) => o.price)) : 0;
+
+  const productJsonLd: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: p.name,
+    description: p.description || undefined,
+    brand: p.brand ? { "@type": "Brand", name: p.brand } : undefined,
+    offers: sorted.length
+      ? {
+          "@type": "AggregateOffer",
+          priceCurrency: "DZD",
+          lowPrice,
+          highPrice,
+          offerCount: sorted.length,
+        }
+      : undefined,
+    image: images.slice(0, 5),
+  };
+
   const share = async () => {
     const url = window.location.href;
-    const text = `شاهد ${p.name} في SOOQY 🇩🇿 ابتداءً من ${formatDA(sorted[0]?.price ?? 0)}`;
+    const text = `شاهد ${p.name} في SOOQY 🇩🇿 ابتداءً من ${formatDA(firstPrice)}`;
     if (navigator.share) {
       try {
         await navigator.share({ title: p.name, text, url });
@@ -186,7 +199,16 @@ function ProductPage() {
     );
 
   return (
-    <div className="pb-6">
+    <>
+      <SeoHead
+        title={p.name}
+        description={p.description?.slice(0, 150) || `شاهد ${p.name} في SOOQY — قارن الأسعار والمخزون في المتاجر الجزائرية.`}
+        ogImage={primaryImage(selected?.images) || images[0]}
+        ogType="product"
+        keywords={`${p.name}, ${p.brand || ""}, شراء الجزائر, SOOQY`}
+        jsonLd={productJsonLd}
+      />
+      <div className="pb-6">
       <div className="relative bg-neutral-100 dark:bg-neutral-800">
         <Carousel slideClassName="basis-full" onIndexChange={setImgIdx}>
           {(images.length ? images : [null]).map((src, i) =>
@@ -463,7 +485,8 @@ function ProductPage() {
           </button>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </>
   );
 }
 

@@ -35,14 +35,10 @@ import { EmptyState } from "@/components/sooqy/empty-state";
 import { ReviewSection } from "@/components/sooqy/ReviewSection";
 import { DirectionsButton } from "@/components/sooqy/DirectionsButton";
 import { cn } from "@/lib/utils";
+import { SeoHead } from "@/components/seo/SeoHead";
 
 export const Route = createFileRoute("/stores/$storeId")({
-  head: () => ({
-    meta: [
-      { title: "المتجر — SooQy" },
-      { name: "description", content: "شاهد جميع سلع المتجر وأسعاره ومواعيد العمل." },
-    ],
-  }),
+  head: () => ({}),
   component: StorePage,
 });
 
@@ -102,13 +98,48 @@ function StorePage() {
     }
   };
 
-  return (
-    <div className="pb-6">
-      {/* شريط المالك — يظهر لك وحدك، والزوار لا يرونه */}
+return (
+    <>
+      <SeoHead
+        title={s.name}
+        description={s.description?.slice(0, 150) || `متجر ${s.name} في الجزائر — شاهد جميع سلالته وأسعاره ومواعيد العمل.`}
+        ogImage={s.cover_url || s.logo_url}
+        ogType="website"
+        keywords={`${s.name}, متجر الجزائر, شراء ${s.name}, SOOQY`}
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "LocalBusiness",
+          name: s.name,
+          description: s.description || undefined,
+          image: s.cover_url || s.logo_url,
+          telephone: s.phone,
+          address: {
+            "@type": "PostalAddress",
+            addressLocality: s.city || undefined,
+            addressRegion: s.wilaya ? String(s.wilaya) : undefined,
+            addressCountry: "DZ",
+          },
+          openingHoursSpecification: Object.entries(s.opening_hours ?? {}).map(([day, h]) => ({
+            "@type": "OpeningHoursSpecification",
+            dayOfWeek: `https://schema.org/${day}`,
+            opens: h.open,
+            closes: h.close,
+          })),
+          aggregateRating: s.rating
+            ? {
+                "@type": "AggregateRating",
+                ratingValue: s.rating,
+                reviewCount: s.review_count || 0,
+              }
+            : undefined,
+        }}
+      />
+      <div className="pb-6">
+      {/* شريط المالك — يظهر لك وحدك، وال visiting visitors لا يرونه */}
       {isOwner && (
         <div className="flex flex-wrap items-center gap-2 bg-primary-soft px-4 py-2.5 text-primary-soft-foreground">
           <Eye className="size-4 shrink-0" />
-          <p className="min-w-0 flex-1 text-xs font-bold">أنت تشاهد متجرك كما يراه الزوار</p>
+          <p className="min-w-0 flex-1 text-xs font-bold">أنت تwatch متجرك كما يراه الزوار</p>
           <Link
             to="/studio/settings"
             className="flex items-center gap-1 rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-foreground transition active:scale-95"
@@ -399,6 +430,7 @@ function StorePage() {
           <ReviewSection targetType="store" targetId={s.id} title="تقييمات المتجر" />
         )}
       </div>
-    </div>
+      </div>
+    </>
   );
 }

@@ -1,0 +1,11 @@
+<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#6366F1"/>
+      <stop offset="100%" stop-color="#4F46E5"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#g)"/>
+  <text x="50%" y="50%" font-family="Tajawal,Arial" font-size="72" font-weight="800" fill="white" text-anchor="middle" dominant-baseline="middle">SOOQY</text>
+  <text x="50%" y="62%" font-family="Tajawal,Arial" font-size="28" fill="#E0E7FF" text-anchor="middle" dominant-baseline="middle">شاهد السلعة قبل الخروج</text>
+</svg>

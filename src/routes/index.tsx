@@ -11,16 +11,18 @@ import { EmptyState } from "@/components/sooqy/empty-state";
 import { ErrorState } from "@/components/sooqy/error-state";
 import { Reveal } from "@/components/sooqy/reveal";
 
+import { SeoHead } from "@/components/seo/SeoHead";
+
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "SooQy — اكتشف المنتجات من حولك" },
+      { title: "SOOQY — السوق الجزائري في جيبك" },
       {
         name: "description",
-        content: "اكتشف السلع القريبة منك، قارن الأسعار، واحجز أو اطلب التوصيل إلى 58 ولاية.",
+        content: "SOOQY سوق جزائري: شاهد السلعة قبل الخروج، اكتشف المنتجات والمتاجر القريبة، قارن الأسعار، احجز أو اطلب التوصيل إلى 58 ولاية.",
       },
-      { property: "og:title", content: "SooQy — السوق الجزائري في جيبك" },
-      { property: "og:description", content: "Discover. Shop. Local." },
+      { property: "og:title", content: "SOOQY — السوق الجزائري في جيبك" },
+      { property: "og:description", content: "شاهد السلعة قبل الخروج للبحث عنها." },
     ],
   }),
   component: Home,
@@ -73,7 +75,30 @@ function Home() {
   const topRated = topRatedProducts.data ?? [];
 
   return (
-    <div className="space-y-8 px-4 pt-4">
+    <>
+      <SeoHead
+        title="SOOQY — السوق الجزائري في جيبك"
+        description="SOOQY سوق جزائري: شاهد السلعة قبل الخروج، اكتشف المنتجات والمتاجر القريبة، قارن الأسعار، احجز أو اطلب التوصيل إلى 58 ولاية."
+        keywords="سوق جزائري, منتجات الجزائر, متاجر الجزائر, توصيل الجزائر, SOOQY"
+        ogType="website"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          name: "SOOQY",
+          url: "https://sooqy.app",
+          description: "سوق جزائري: شاهد السلعة قبل الخروج للبحث عنها.",
+          inLanguage: "ar-DZ",
+          potentialAction: {
+            "@type": "SearchAction",
+            target: {
+              "@type": "EntryPoint",
+              urlTemplate: "https://sooqy.app/explore?q={search_term_string}",
+            },
+            "query-input": "required name=search_term_string",
+          },
+        }}
+      />
+      <div className="space-y-8 px-4 pt-4">
       {/* الترويسة */}
       <header className="flex items-center justify-between gap-2">
         <h1 className="text-display tracking-[0.02em] text-primary">SOOQY</h1>
@@ -257,6 +282,7 @@ function Home() {
           <MapPin className="size-4" />
         </Link>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

@@ -32,14 +32,10 @@ import {
 import { WilayaSelect, wilayasQuery } from "@/components/sooqy/WilayaSelect";
 import { PageHeader } from "@/components/sooqy/page-header";
 import { SectionTitle } from "@/components/sooqy/list-menu";
+import { SeoHead } from "@/components/seo/SeoHead";
 
 export const Route = createFileRoute("/profile")({
-  head: () => ({
-    meta: [
-      { title: "الملف الشخصي — SooQy" },
-      { name: "description", content: "عدّل اسمك ورقم هاتفك ووليتك في SooQy." },
-    ],
-  }),
+  head: () => ({}),
   component: ProfilePage,
 });
 
@@ -163,7 +159,14 @@ function ProfilePage() {
   };
 
   return (
-    <div className="mx-auto max-w-xl space-y-5 px-4 pb-24 pt-6">
+    <>
+      <SeoHead
+        title="الملف الشخصي"
+        description="عدّل اسمك ورقم هاتفك وولايتك في SooQy."
+        keywords="الملف الشخصي, حساب, SooQy"
+        ogType="website"
+      />
+      <div className="mx-auto max-w-xl space-y-5 px-4 pb-24 pt-6">
       <PageHeader
         title="الملف الشخصي"
         subtitle="حسابك وبياناتك في مكان واحد"
@@ -383,6 +386,7 @@ function ProfilePage() {
           </div>
         </section>
       )}
-    </div>
+      </div>
+    </>
   );
 }
