@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
@@ -6,7 +6,6 @@ import {
   ChevronLeft,
   Clock,
   Eye,
-  ImagePlus,
   MapPin,
   Package,
   PackagePlus,
@@ -28,12 +27,15 @@ import {
   fetchMyStore,
   fetchStoreOrderItems,
   fetchStoreReservations,
+  merchantAddOfferImages,
   merchantConfirmAll,
   merchantConfirmReservation,
   merchantCreateStore,
   merchantDeleteOffer,
   merchantQuickAddProduct,
+  merchantRemoveOfferImage,
   merchantReplaceOfferImage,
+  merchantSetPrimaryImage,
   merchantToggleAvailability,
   merchantUpdateOffer,
   merchantUpdateOrderStatus,
@@ -42,6 +44,7 @@ import {
   primaryImage,
   type OfferFull,
 } from "@/lib/sooqy";
+import { ImageUploader, type ImageUploaderItem } from "@/components/sooqy/image-uploader";
 import { formatDA, geoErrorMessage, getStoreStatus, useGeo } from "@/lib/geo";
 import {
   DEFAULT_CATEGORY_ID,
@@ -98,11 +101,9 @@ function StudioPage() {
     sizes: "",
     colors: "",
   });
-  const [image, setImage] = useState<File | null>(null);
+  const [images, setImages] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
   const [code, setCode] = useState("");
-  const imageInputRef = useRef<HTMLInputElement>(null);
-  const editImageInputRef = useRef<HTMLInputElement>(null);
   const [editing, setEditing] = useState<OfferFull | null>(null);
   const [editForm, setEditForm] = useState({
     name: "",
@@ -112,7 +113,8 @@ function StudioPage() {
     brand: "",
     description: "",
   });
-  const [editImage, setEditImage] = useState<File | null>(null);
+  const [editImages, setEditImages] = useState<File[]>([]);
+  const [editExistingImages, setEditExistingImages] = useState<ImageUploaderItem[]>([]);
 
   const roles = useQuery({ queryKey: ["my-roles"], queryFn: fetchMyRoles, enabled: !!user });
   const store = useQuery({ queryKey: ["my-store"], queryFn: fetchMyStore, enabled: !!user });
@@ -233,7 +235,7 @@ function StudioPage() {
           ...(sizes.length ? { sizes } : {}),
           ...(colors.length ? { colors } : {}),
         },
-        image,
+        images.length ? images : null,
       );
       toast.success("تمت إضافة المنتج بنجاح");
       setProductForm({
@@ -246,7 +248,7 @@ function StudioPage() {
         sizes: "",
         colors: "",
       });
-      setImage(null);
+      setImages([]);
       await qc.invalidateQueries({ queryKey: ["my-store-offers", store.data.id] });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "تعذر إضافة المنتج.");
@@ -265,7 +267,14 @@ function StudioPage() {
       brand: o.product.brand ?? "",
       description: o.product.description ?? "",
     });
-    setEditImage(null);
+    setEditImages([]);
+    setEditExistingImages(
+      (o.images ?? []).map((img) => ({
+        file: null as unknown as File,
+        preview: img.image_url,
+        isPrimary: img.is_primary,
+      })),
+    );
   };
 
   const saveEdit = async () => {
@@ -287,9 +296,16 @@ function StudioPage() {
         price: Number(editForm.price),
         stock_quantity: Number(editForm.stock),
       });
-      if (editImage) await merchantReplaceOfferImage(editing.id, editImage);
+
+      // رفع صور جديدة إن وجدت
+      if (editImages.length) {
+        await merchantAddOfferImages(editing.id, editImages);
+      }
+
       toast.success("تم تحديث المنتج ✅");
       setEditing(null);
+      setEditImages([]);
+      setEditExistingImages([]);
       await qc.invalidateQueries({ queryKey: ["my-store-offers", store.data.id] });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "تعذر تحديث المنتج.");
@@ -660,24 +676,14 @@ function StudioPage() {
                 rows={2}
                 className="rounded-xl border border-input bg-background px-3 py-2 outline-none transition focus:ring-2 focus:ring-indigo-500"
               />
-              <button
-                type="button"
-                onClick={() => imageInputRef.current?.click()}
-                className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed bg-background p-3 text-sm"
-              >
-                <ImagePlus className="size-4 text-primary" />
-                {image ? image.name : "رفع صورة المنتج"}
-              </button>
-              <input
-                ref={imageInputRef}
-                type="file"
-                accept="image/*"
-                onChange={(e) => setImage(e.target.files?.[0] ?? null)}
-                className="hidden"
+              <ImageUploader
+                initialItems={[]}
+                onChange={setImages}
+                label="إضافة صور المنتج (حتى 10)"
               />
               <button
                 onClick={addProduct}
-                disabled={busy}
+                disabled={busy || images.length === 0}
                 className="rounded-2xl bg-ink py-3 font-bold text-ink-foreground disabled:opacity-50"
               >
                 {busy ? "جارٍ الحفظ..." : "حفظ المنتج"}
@@ -745,21 +751,16 @@ function StudioPage() {
                     rows={2}
                     className="rounded-xl border border-input bg-background px-3 py-2 outline-none transition focus:ring-2 focus:ring-indigo-500"
                   />
-                  <button
-                    type="button"
-                    onClick={() => editImageInputRef.current?.click()}
-                    className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed bg-background p-2.5 text-sm"
-                  >
-                    <ImagePlus className="size-4 text-primary" />
-                    {editImage ? editImage.name : "تغيير صورة المنتج"}
-                  </button>
-                  <input
-                    ref={editImageInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => setEditImage(e.target.files?.[0] ?? null)}
-                    className="hidden"
+                  <ImageUploader
+                    initialItems={editExistingImages}
+                    onChange={(items) => setEditExistingImages(items)}
+                    label="إدارة صور المنتج"
                   />
+                  {editImages.length > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      {editImages.length} صورة جديدة سيتم رفعها
+                    </p>
+                  )}
                   <button
                     onClick={saveEdit}
                     disabled={busy}

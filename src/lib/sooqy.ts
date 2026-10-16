@@ -835,11 +835,19 @@ export async function merchantQuickAddProduct(
     sizes?: string[];
     colors?: string[];
   },
-  imageFile: File | null,
+  imageFiles: File[] | null,
 ) {
   const { data: u } = await supabase.auth.getUser();
   if (!u.user) throw new Error(ERRORS["not_authenticated"]);
-  const imageUrl = imageFile ? await uploadImageToBucket(imageFile, "product-media") : null;
+
+  const imageUrls: string[] = [];
+  if (imageFiles?.length) {
+    for (const file of imageFiles) {
+      const url = await uploadImageToBucket(file, "product-media");
+      imageUrls.push(url);
+    }
+  }
+
   const { data: product, error: pErr } = await supabase
     .from("products")
     .insert({
@@ -868,13 +876,87 @@ export async function merchantQuickAddProduct(
     .select()
     .single();
   if (oErr) throw oErr;
-  if (imageUrl) {
-    const { error: iErr } = await supabase
-      .from("product_images")
-      .insert({ offer_id: offer.id, image_url: imageUrl, is_primary: true });
+
+  // إدراج جميع الصور، أول صورة تُصبح الأساسية
+  if (imageUrls.length) {
+    const rows = imageUrls.map((url, i) => ({
+      offer_id: offer.id,
+      image_url: url,
+      is_primary: i === 0,
+    }));
+    const { error: iErr } = await supabase.from("product_images").insert(rows);
     if (iErr) throw iErr;
   }
   return offer;
+}
+
+/** رفع صور متعددة لعرض موجود وإدراجها في product_images. */
+export async function merchantAddOfferImages(offerId: string, files: File[]) {
+  const { data: u } = await supabase.auth.getUser();
+  if (!u.user) throw new Error(ERRORS["not_authenticated"]);
+
+  // التحقق من ملكية العرض قبل الرفع
+  const { data: existing, error: qErr } = await supabase
+    .from("store_offers")
+    .select("id")
+    .eq("id", offerId)
+    .maybeSingle();
+  if (qErr) throw qErr;
+  if (!existing) throw new Error("العرض غير موجود");
+
+  const imageUrls: string[] = [];
+  for (const file of files) {
+    const url = await uploadImageToBucket(file, "product-media");
+    imageUrls.push(url);
+  }
+
+  // التحقق من وجود صور أساسية بالفعل
+  const { data: hasPrimary } = await supabase
+    .from("product_images")
+    .select("id")
+    .eq("offer_id", offerId)
+    .eq("is_primary", true)
+    .maybeSingle();
+
+  const rows = imageUrls.map((url) => ({
+    offer_id,
+    image_url: url,
+    is_primary: !hasPrimary, // أول دفعة تُصبح أساسية إن لم تكن هناك أساسية
+  }));
+  const { error: iErr } = await supabase.from("product_images").insert(rows);
+  if (iErr) throw iErr;
+  return imageUrls;
+}
+
+/** حذف صورة منتج بمعرفها. */
+export async function merchantRemoveOfferImage(imageId: string) {
+  const { error } = await supabase.from("product_images").delete().eq("id", imageId);
+  if (error) throw error;
+}
+
+/** تحديد صورة كأساسية للعرض. */
+export async function merchantSetPrimaryImage(imageId: string) {
+  const { data: img, error: qErr } = await supabase
+    .from("product_images")
+    .select("offer_id")
+    .eq("id", imageId)
+    .maybeSingle();
+  if (qErr) throw qErr;
+  if (!img) throw new Error("الصورة غير موجودة");
+
+  // إزالة الأساسيية من كل صور العرض
+  const { error: resetErr } = await supabase
+    .from("product_images")
+    .update({ is_primary: false })
+    .eq("offer_id", img.offer_id);
+  if (resetErr) throw resetErr;
+
+  // تعيين الصورة المختارة كأساسية
+  const { error } = await supabase
+    .from("product_images")
+    .update({ is_primary: true })
+    .eq("id", imageId);
+  if (error) throw error;
 }
 
 /** تعديل بيانات المنتج نفسه (الاسم/الوصف/العلامة/التصنيف) — يظهر في كل المتاجر التي تبيعه. */
